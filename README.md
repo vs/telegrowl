@@ -2,6 +2,10 @@
 
 Hands-free Telegram voice client for iOS. Talk to your AI assistant while driving.
 
+![Swift](https://img.shields.io/badge/Swift-5.9-orange)
+![iOS](https://img.shields.io/badge/iOS-17.0+-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
+
 ## Features
 
 - 🎙️ One-tap voice recording
@@ -10,11 +14,16 @@ Hands-free Telegram voice client for iOS. Talk to your AI assistant while drivin
 - 🤖 Optimized for AI assistant conversations
 - 📱 Background audio support
 
+## Screenshots
+
+Coming soon...
+
 ## Requirements
 
 - iOS 17.0+
 - Xcode 15.0+
 - Telegram API credentials (api_id, api_hash)
+- TDLib framework (see SETUP.md)
 
 ## Setup
 

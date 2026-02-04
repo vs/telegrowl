@@ -6,6 +6,8 @@ struct ContentView: View {
     
     @State private var showingAuth = false
     @State private var showingSettings = false
+    @State private var showingChatList = false
+    @State private var showingConversation = false
     
     var body: some View {
         ZStack {
@@ -21,19 +23,18 @@ struct ContentView: View {
                 // Header
                 header
                 
-                Spacer()
-                
                 // Main content
                 if telegramService.isAuthenticated {
-                    mainContent
+                    if showingConversation {
+                        // Conversation mode
+                        conversationMode
+                    } else {
+                        // Record mode (main)
+                        recordMode
+                    }
                 } else {
                     authPrompt
                 }
-                
-                Spacer()
-                
-                // Status bar
-                statusBar
             }
         }
         .sheet(isPresented: $showingAuth) {
@@ -42,11 +43,23 @@ struct ContentView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .newVoiceMessage)) { _ in
-            handleNewVoiceMessage()
+        .sheet(isPresented: $showingChatList) {
+            ChatListView()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .newVoiceMessage)) { notification in
+            handleNewVoiceMessage(notification)
         }
         .onReceive(NotificationCenter.default.publisher(for: .recordingAutoStopped)) { _ in
             sendRecording()
+        }
+        .alert("Error", isPresented: .constant(telegramService.error != nil)) {
+            Button("OK") {
+                telegramService.error = nil
+            }
+        } message: {
+            if let error = telegramService.error {
+                Text(error.message)
+            }
         }
     }
     
@@ -54,16 +67,41 @@ struct ContentView: View {
     
     private var header: some View {
         HStack {
-            Text("Telegrowl")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-            
-            Text("🐯")
-                .font(.title2)
+            // Title
+            HStack(spacing: 8) {
+                Text("🐯")
+                    .font(.title)
+                
+                Text("Telegrowl")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+            }
             
             Spacer()
             
+            // Chat selector
+            if telegramService.isAuthenticated {
+                Button(action: { showingChatList = true }) {
+                    HStack(spacing: 4) {
+                        if let chat = telegramService.selectedChat {
+                            Text(chat.title)
+                                .lineLimit(1)
+                        } else {
+                            Text("Select chat")
+                        }
+                        Image(systemName: "chevron.down")
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.7))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(20)
+                }
+            }
+            
+            // Settings
             Button(action: { showingSettings = true }) {
                 Image(systemName: "gear")
                     .font(.title2)
@@ -73,20 +111,11 @@ struct ContentView: View {
         .padding()
     }
     
-    // MARK: - Main Content
+    // MARK: - Record Mode
     
-    private var mainContent: some View {
-        VStack(spacing: 40) {
-            // Chat info
-            if let chat = telegramService.currentChat {
-                Text(chat.title)
-                    .font(.headline)
-                    .foregroundColor(.white.opacity(0.8))
-            } else {
-                Text("Tap to select chat")
-                    .font(.headline)
-                    .foregroundColor(.white.opacity(0.5))
-            }
+    private var recordMode: some View {
+        VStack(spacing: 0) {
+            Spacer()
             
             // Record button
             RecordButton(
@@ -103,49 +132,106 @@ struct ContentView: View {
             
             // Instructions
             Text(audioService.isRecording ? "Release to send" : "Hold to talk")
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.5))
-        }
-    }
-    
-    // MARK: - Auth Prompt
-    
-    private var authPrompt: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "person.crop.circle.badge.questionmark")
-                .font(.system(size: 60))
-                .foregroundColor(.white.opacity(0.5))
-            
-            Text("Login to Telegram")
-                .font(.title2)
-                .foregroundColor(.white)
-            
-            Button(action: { showingAuth = true }) {
-                Text("Connect Account")
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 30)
-                    .padding(.vertical, 15)
-                    .background(Color.blue)
-                    .cornerRadius(25)
-            }
-        }
-    }
-    
-    // MARK: - Status Bar
-    
-    private var statusBar: some View {
-        HStack {
-            // Connection status
-            Circle()
-                .fill(telegramService.isAuthenticated ? Color.green : Color.red)
-                .frame(width: 8, height: 8)
-            
-            Text(telegramService.isAuthenticated ? "Connected" : "Not connected")
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.5))
+                .font(.headline)
+                .foregroundColor(.white.opacity(0.6))
+                .padding(.top, 20)
             
             Spacer()
+            
+            // Bottom actions
+            bottomBar
+        }
+    }
+    
+    // MARK: - Conversation Mode
+    
+    private var conversationMode: some View {
+        VStack(spacing: 0) {
+            // Messages
+            ConversationView()
+            
+            // Compact record button
+            compactRecordBar
+        }
+    }
+    
+    // MARK: - Compact Record Bar
+    
+    private var compactRecordBar: some View {
+        HStack(spacing: 16) {
+            // Back button
+            Button(action: { showingConversation = false }) {
+                Image(systemName: "chevron.left")
+                    .font(.title2)
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            
+            Spacer()
+            
+            // Mini record button
+            ZStack {
+                Circle()
+                    .fill(audioService.isRecording ? Color.red : Color(hex: "e94560"))
+                    .frame(width: 60, height: 60)
+                    .shadow(color: .black.opacity(0.3), radius: 10)
+                
+                Image(systemName: audioService.isRecording ? "stop.fill" : "mic.fill")
+                    .font(.title2)
+                    .foregroundColor(.white)
+            }
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        if !audioService.isRecording {
+                            audioService.startRecording()
+                        }
+                    }
+                    .onEnded { _ in
+                        sendRecording()
+                    }
+            )
+            
+            Spacer()
+            
+            // Placeholder for balance
+            Color.clear.frame(width: 44, height: 44)
+        }
+        .padding()
+        .background(Color.black.opacity(0.3))
+    }
+    
+    // MARK: - Bottom Bar
+    
+    private var bottomBar: some View {
+        HStack {
+            // Connection status
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(connectionStatusColor)
+                    .frame(width: 8, height: 8)
+                
+                Text(connectionStatusText)
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            
+            Spacer()
+            
+            // View conversation button
+            if !telegramService.messages.isEmpty {
+                Button(action: { showingConversation = true }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "bubble.left.and.bubble.right")
+                        Text("\(telegramService.messages.count)")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.7))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(15)
+                }
+            }
             
             // Playing indicator
             if audioService.isPlaying {
@@ -161,25 +247,110 @@ struct ContentView: View {
         .background(Color.black.opacity(0.3))
     }
     
+    // MARK: - Auth Prompt
+    
+    private var authPrompt: some View {
+        VStack(spacing: 30) {
+            Spacer()
+            
+            Image(systemName: "person.crop.circle.badge.questionmark")
+                .font(.system(size: 80))
+                .foregroundColor(.white.opacity(0.4))
+            
+            VStack(spacing: 8) {
+                Text("Welcome to Telegrowl")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Text("Hands-free voice messaging for Telegram")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.6))
+            }
+            
+            Button(action: { showingAuth = true }) {
+                HStack {
+                    Image(systemName: "paperplane.fill")
+                    Text("Connect Telegram")
+                }
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+                .padding(.horizontal, 30)
+                .padding(.vertical, 15)
+                .background(Color(hex: "e94560"))
+                .cornerRadius(25)
+            }
+            
+            #if DEBUG
+            // Demo mode button for testing
+            Button(action: { telegramService.simulateLogin() }) {
+                Text("Demo Mode")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            .padding(.top, 20)
+            #endif
+            
+            Spacer()
+        }
+    }
+    
+    // MARK: - Helpers
+    
+    private var connectionStatusColor: Color {
+        switch telegramService.connectionState {
+        case .ready:
+            return .green
+        case .connecting, .connectingToProxy, .updating:
+            return .yellow
+        case .disconnected:
+            return .red
+        }
+    }
+    
+    private var connectionStatusText: String {
+        switch telegramService.connectionState {
+        case .ready:
+            return "Connected"
+        case .connecting:
+            return "Connecting..."
+        case .connectingToProxy:
+            return "Connecting to proxy..."
+        case .updating:
+            return "Updating..."
+        case .disconnected:
+            return "Disconnected"
+        }
+    }
+    
     // MARK: - Actions
     
     private func sendRecording() {
         guard let url = audioService.stopRecording() else { return }
         
         let duration = Int(audioService.recordingDuration)
-        let waveform = audioService.generateWaveform(from: url)
+        guard duration > 0 else {
+            print("⚠️ Recording too short, not sending")
+            return
+        }
         
+        let waveform = audioService.generateWaveform(from: url)
         telegramService.sendVoiceMessage(audioURL: url, duration: duration, waveform: waveform)
     }
     
-    private func handleNewVoiceMessage() {
+    private func handleNewVoiceMessage(_ notification: Notification) {
         guard Config.autoPlayResponses else { return }
         
-        // Get latest incoming voice message and play it
-        if let lastMessage = telegramService.messages.last,
-           !lastMessage.isOutgoing,
-           let url = lastMessage.localURL {
-            audioService.play(url: url)
+        if let message = notification.object as? TGMessage,
+           !message.isOutgoing,
+           case .voice(let voiceNote) = message.content {
+            
+            // Download and play
+            telegramService.downloadVoice(voiceNote) { url in
+                if let url = url {
+                    audioService.play(url: url)
+                }
+            }
         }
     }
 }
@@ -193,11 +364,11 @@ extension Color {
         Scanner(string: hex).scanHexInt64(&int)
         let a, r, g, b: UInt64
         switch hex.count {
-        case 3: // RGB (12-bit)
+        case 3:
             (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
+        case 6:
             (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
+        case 8:
             (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
         default:
             (a, r, g, b) = (255, 0, 0, 0)

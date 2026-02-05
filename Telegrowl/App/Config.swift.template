@@ -1,0 +1,33 @@
+import Foundation
+
+/// Configuration for Telegrowl
+/// Copy this file to Config.swift and fill in your credentials
+/// Get API credentials at https://my.telegram.org/apps
+struct Config {
+    // MARK: - Telegram API (REQUIRED)
+    static let telegramApiId: Int32 = 0  // Your api_id
+    static let telegramApiHash = ""       // Your api_hash
+
+    // MARK: - TDLib Paths
+    static var tdlibDatabasePath: String {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return documentsPath.appendingPathComponent("tdlib").path
+    }
+
+    static var tdlibFilesPath: String {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return documentsPath.appendingPathComponent("tdlib_files").path
+    }
+
+    // MARK: - Chat Settings
+    static var targetChatId: Int64 = 0
+    static var targetChatUsername: String = ""
+
+    // MARK: - Audio Settings
+    static var autoPlayResponses: Bool = true
+    static var hapticFeedback: Bool = true
+    static var silenceDetection: Bool = true
+    static var silenceDuration: TimeInterval = 2.0
+    static var silenceThreshold: Float = 0.01
+    static var maxRecordingDuration: TimeInterval = 60.0
+}

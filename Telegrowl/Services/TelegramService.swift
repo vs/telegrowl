@@ -82,357 +82,340 @@ class TelegramService: ObservableObject {
         }
     }
 
-    // MARK: - Placeholder methods (to be implemented in tasks 4-8)
+    // MARK: - Update Handler
 
     private func handleUpdate(_ update: Update) {
-        // Task 4 will implement this
-    }
-
-    private func setupDemoMode() {
-        isDemoMode = true
-        authorizationState = .authorizationStateWaitPhoneNumber
-    }
-
-    // MARK: - Demo Mode (for testing without TDLib)
-
-    #if DEBUG
-    func simulateLogin() {
-        authorizationState = .authorizationStateReady
-        // Note: currentUser, chats, selectedChat now use TDLibKit types
-        // Full demo mode implementation will be updated in later tasks
-    }
-    #endif
-    
-    // MARK: - Authentication
-    
-    func sendPhoneNumber(_ phone: String) {
-        print("📱 Sending phone number: \(phone.prefix(4))****")
-        
-        // TODO: TDLib call
-        // td_send(clientId, SetAuthenticationPhoneNumber(phone_number: phone))
-        
-        authState = .waitingCode(codeInfo: "Code sent to \(phone)")
-    }
-    
-    func sendCode(_ code: String) {
-        print("📱 Sending auth code")
-        
-        // TODO: TDLib call
-        // td_send(clientId, CheckAuthenticationCode(code: code))
-        
-        // For demo:
-        #if DEBUG
-        simulateLogin()
-        #endif
-    }
-    
-    func sendPassword(_ password: String) {
-        print("📱 Sending 2FA password")
-        
-        // TODO: TDLib call
-        // td_send(clientId, CheckAuthenticationPassword(password: password))
-    }
-    
-    func logout() {
-        print("📱 Logging out")
-        authState = .loggingOut
-        
-        // TODO: TDLib call
-        // td_send(clientId, LogOut())
-        
-        isAuthenticated = false
-        authState = .waitingPhoneNumber
-        currentUser = nil
-        chats = []
-        selectedChat = nil
-        messages = []
-    }
-    
-    // MARK: - Chats
-    
-    func loadChats(limit: Int = 100) {
-        print("📱 Loading chats...")
-        
-        // TODO: TDLib call
-        // td_send(clientId, GetChats(chat_list: nil, limit: limit))
-    }
-    
-    func selectChat(_ chat: TGChat) {
-        selectedChat = chat
-        Config.targetChatId = chat.id
-        loadMessages(chatId: chat.id)
-    }
-    
-    func searchChat(username: String) {
-        print("📱 Searching for @\(username)")
-        
-        // TODO: TDLib call
-        // td_send(clientId, SearchPublicChat(username: username))
-    }
-    
-    // MARK: - Messages
-    
-    func loadMessages(chatId: Int64, limit: Int = 50) {
-        print("📱 Loading messages for chat \(chatId)")
-        
-        // TODO: TDLib call
-        // td_send(clientId, GetChatHistory(chat_id: chatId, from_message_id: 0, limit: limit))
-    }
-    
-    func sendVoiceMessage(audioURL: URL, duration: Int, waveform: Data?) {
-        guard let chat = selectedChat else {
-            print("❌ No chat selected")
-            error = TGError(code: -1, message: "No chat selected")
-            return
-        }
-        
-        print("📤 Sending voice message to chat \(chat.id)")
-        print("   Duration: \(duration)s")
-        print("   File: \(audioURL.lastPathComponent)")
-        
-        // Create optimistic local message
-        let localMessage = TGMessage(
-            id: Int64.random(in: 1...Int64.max),
-            chatId: chat.id,
-            senderId: currentUser?.id ?? 0,
-            content: .voice(TGVoiceNote(
-                duration: duration,
-                waveform: waveform,
-                localPath: audioURL.path,
-                remoteId: nil
-            )),
-            date: Date(),
-            isOutgoing: true,
-            sendingState: .pending
-        )
-        
-        messages.append(localMessage)
-        
-        // TODO: TDLib call
-        // let inputFile = InputFileLocal(path: audioURL.path)
-        // let voiceNote = InputMessageVoiceNote(
-        //     voice_note: inputFile,
-        //     duration: duration,
-        //     waveform: waveform?.base64EncodedString()
-        // )
-        // td_send(clientId, SendMessage(chat_id: chat.id, input_message_content: voiceNote))
-        
-        // For demo, simulate success
-        #if DEBUG
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            if let index = self?.messages.firstIndex(where: { $0.id == localMessage.id }) {
-                self?.messages[index].sendingState = .sent
-            }
-            
-            // Simulate response after 2 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                self?.simulateIncomingVoice(chatId: chat.id)
-            }
-        }
-        #endif
-    }
-    
-    #if DEBUG
-    private func simulateIncomingVoice(chatId: Int64) {
-        let response = TGMessage(
-            id: Int64.random(in: 1...Int64.max),
-            chatId: chatId,
-            senderId: chatId,
-            content: .voice(TGVoiceNote(
-                duration: 5,
-                waveform: nil,
-                localPath: nil,
-                remoteId: "demo_voice_123"
-            )),
-            date: Date(),
-            isOutgoing: false,
-            sendingState: .sent
-        )
-        
-        messages.append(response)
-        NotificationCenter.default.post(name: .newVoiceMessage, object: response)
-    }
-    #endif
-    
-    func downloadVoice(_ voiceNote: TGVoiceNote, completion: @escaping (URL?) -> Void) {
-        guard let remoteId = voiceNote.remoteId else {
-            completion(nil)
-            return
-        }
-        
-        print("📥 Downloading voice: \(remoteId)")
-        
-        // TODO: TDLib call
-        // td_send(clientId, DownloadFile(file_id: remoteId, priority: 32))
-        
-        // For demo
-        #if DEBUG
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            // Return a demo audio file path
-            completion(nil)
-        }
-        #endif
-    }
-    
-    // MARK: - Update Handler
-    
-    private func handleUpdate(_ update: TGUpdate) {
         switch update {
-        case .authorizationState(let state):
-            handleAuthorizationState(state)
-            
-        case .connectionState(let state):
-            handleConnectionState(state)
-            
-        case .newMessage(let message):
-            handleNewMessage(message)
-            
-        case .messageContent(let messageId, let chatId, let content):
-            handleMessageContentUpdate(messageId: messageId, chatId: chatId, content: content)
-            
-        case .file(let file):
-            handleFileUpdate(file)
-            
-        case .newChat(let chat):
-            if !chats.contains(where: { $0.id == chat.id }) {
-                chats.append(chat)
+        case .updateAuthorizationState(let state):
+            handleAuthState(state.authorizationState)
+
+        case .updateConnectionState(let state):
+            connectionState = state.state
+
+        case .updateNewMessage(let update):
+            handleNewMessage(update.message)
+
+        case .updateMessageContent(let update):
+            handleMessageContentUpdate(messageId: update.messageId, chatId: update.chatId, content: update.newContent)
+
+        case .updateFile(let update):
+            handleFileUpdate(update.file)
+
+        case .updateNewChat(let update):
+            if !chats.contains(where: { $0.id == update.chat.id }) {
+                chats.append(update.chat)
             }
-        }
-    }
-    
-    private func handleAuthorizationState(_ state: AuthState) {
-        authState = state
-        
-        switch state {
-        case .ready:
-            isAuthenticated = true
-            loadChats()
-            
-        case .closed:
-            isAuthenticated = false
-            
+
+        case .updateUser(let update):
+            if update.user.id == currentUser?.id {
+                currentUser = update.user
+            }
+
         default:
             break
         }
     }
-    
-    private func handleConnectionState(_ state: ConnectionState) {
-        connectionState = state
-    }
-    
-    private func handleNewMessage(_ message: TGMessage) {
-        if message.chatId == selectedChat?.id {
-            if !messages.contains(where: { $0.id == message.id }) {
-                messages.append(message)
+
+    private func handleAuthState(_ state: AuthorizationState) {
+        print("📱 Auth state: \(state)")
+        authorizationState = state
+
+        switch state {
+        case .authorizationStateWaitTdlibParameters:
+            Task { await setTdlibParameters() }
+
+        case .authorizationStateReady:
+            Task {
+                await loadCurrentUser()
+                loadChats()
             }
-            
-            // Notify for auto-play if it's an incoming voice message
-            if !message.isOutgoing, case .voice = message.content {
-                NotificationCenter.default.post(name: .newVoiceMessage, object: message)
+
+        case .authorizationStateClosed:
+            api = nil
+
+        default:
+            break
+        }
+    }
+
+    private func setTdlibParameters() async {
+        do {
+            try await api?.setTdlibParameters(
+                apiHash: Config.telegramApiHash,
+                apiId: Config.telegramApiId,
+                applicationVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0",
+                databaseDirectory: Config.tdlibDatabasePath,
+                databaseEncryptionKey: Data(),
+                deviceModel: UIDevice.current.model,
+                filesDirectory: Config.tdlibFilesPath,
+                systemLanguageCode: Locale.current.language.languageCode?.identifier ?? "en",
+                systemVersion: UIDevice.current.systemVersion,
+                useChatInfoDatabase: true,
+                useFileDatabase: true,
+                useMessageDatabase: true,
+                useSecretChats: false,
+                useTestDc: false
+            )
+            print("📱 TDLib parameters set")
+        } catch {
+            print("❌ Failed to set TDLib parameters: \(error)")
+            self.error = error
+        }
+    }
+
+    // MARK: - Authentication
+
+    func sendPhoneNumber(_ phone: String) {
+        print("📱 Sending phone number: \(phone.prefix(4))****")
+
+        Task {
+            do {
+                try await api?.setAuthenticationPhoneNumber(
+                    phoneNumber: phone,
+                    settings: nil
+                )
+            } catch {
+                print("❌ Phone number error: \(error)")
+                self.error = error
             }
         }
     }
-    
-    private func handleMessageContentUpdate(messageId: Int64, chatId: Int64, content: TGMessageContent) {
+
+    func sendCode(_ code: String) {
+        print("📱 Sending auth code")
+
+        Task {
+            do {
+                try await api?.checkAuthenticationCode(code: code)
+            } catch {
+                print("❌ Code verification error: \(error)")
+                self.error = error
+            }
+        }
+    }
+
+    func sendPassword(_ password: String) {
+        print("📱 Sending 2FA password")
+
+        Task {
+            do {
+                try await api?.checkAuthenticationPassword(password: password)
+            } catch {
+                print("❌ Password error: \(error)")
+                self.error = error
+            }
+        }
+    }
+
+    func logout() {
+        print("📱 Logging out")
+
+        Task {
+            do {
+                try await api?.logOut()
+            } catch {
+                print("❌ Logout error: \(error)")
+            }
+        }
+    }
+
+    private func loadCurrentUser() async {
+        do {
+            currentUser = try await api?.getMe()
+            print("📱 Loaded user: \(currentUser?.firstName ?? "unknown")")
+        } catch {
+            print("❌ Failed to load user: \(error)")
+        }
+    }
+
+    // MARK: - Chats
+
+    func loadChats(limit: Int = 100) {
+        print("📱 Loading chats...")
+
+        Task {
+            do {
+                let chatList = try await api?.getChats(chatList: .chatListMain, limit: limit)
+
+                for chatId in chatList?.chatIds ?? [] {
+                    if let chat = try? await api?.getChat(chatId: chatId) {
+                        if !chats.contains(where: { $0.id == chat.id }) {
+                            chats.append(chat)
+                        }
+                    }
+                }
+
+                print("📱 Loaded \(chats.count) chats")
+            } catch {
+                print("❌ Failed to load chats: \(error)")
+                self.error = error
+            }
+        }
+    }
+
+    func selectChat(_ chat: Chat) {
+        selectedChat = chat
+        Config.targetChatId = chat.id
+        messages = []
+        loadMessages(chatId: chat.id)
+    }
+
+    func searchChat(username: String) {
+        print("📱 Searching for @\(username)")
+
+        Task {
+            do {
+                let chat = try await api?.searchPublicChat(username: username)
+                if let chat = chat, !chats.contains(where: { $0.id == chat.id }) {
+                    chats.insert(chat, at: 0)
+                }
+            } catch {
+                print("❌ Search error: \(error)")
+                self.error = error
+            }
+        }
+    }
+
+    // MARK: - Messages
+
+    func loadMessages(chatId: Int64, limit: Int = 50) {
+        print("📱 Loading messages for chat \(chatId)")
+
+        Task {
+            do {
+                let history = try await api?.getChatHistory(
+                    chatId: chatId,
+                    fromMessageId: 0,
+                    limit: limit,
+                    offset: 0,
+                    onlyLocal: false
+                )
+
+                messages = history?.messages ?? []
+                print("📱 Loaded \(messages.count) messages")
+            } catch {
+                print("❌ Failed to load messages: \(error)")
+            }
+        }
+    }
+
+    func sendVoiceMessage(audioURL: URL, duration: Int, waveform: Data?) {
+        guard let chat = selectedChat else {
+            print("❌ No chat selected")
+            return
+        }
+
+        print("📤 Sending voice message to chat \(chat.id)")
+        print("   Duration: \(duration)s")
+        print("   File: \(audioURL.lastPathComponent)")
+
+        Task {
+            do {
+                let inputFile = InputFile.inputFileLocal(path: audioURL.path)
+                let voiceNote = InputMessageContent.inputMessageVoiceNote(
+                    InputMessageVoiceNote(
+                        caption: nil,
+                        duration: duration,
+                        selfDestructType: nil,
+                        voiceNote: inputFile,
+                        waveform: waveform?.base64EncodedString() ?? ""
+                    )
+                )
+
+                _ = try await api?.sendMessage(
+                    chatId: chat.id,
+                    inputMessageContent: voiceNote,
+                    messageThreadId: 0,
+                    options: nil,
+                    replyMarkup: nil,
+                    replyTo: nil
+                )
+
+                print("📤 Voice message sent")
+            } catch {
+                print("❌ Failed to send voice: \(error)")
+                self.error = error
+            }
+        }
+    }
+
+    private func handleNewMessage(_ message: Message) {
+        guard message.chatId == selectedChat?.id else { return }
+
+        if !messages.contains(where: { $0.id == message.id }) {
+            messages.append(message)
+        }
+
+        // Notify for auto-play if incoming voice
+        if !message.isOutgoing,
+           case .messageVoiceNote = message.content {
+            NotificationCenter.default.post(name: .newVoiceMessage, object: message)
+        }
+    }
+
+    private func handleMessageContentUpdate(messageId: Int64, chatId: Int64, content: MessageContent) {
         if let index = messages.firstIndex(where: { $0.id == messageId && $0.chatId == chatId }) {
-            messages[index].content = content
+            print("📱 Message content updated: \(messageId)")
+            // Note: Message is a struct with let content, updates come via new message events
         }
     }
-    
-    private func handleFileUpdate(_ file: TGFile) {
-        // Update file download progress
-        print("📁 File update: \(file.id), downloaded: \(file.isDownloaded)")
-    }
-}
 
-// MARK: - Models
+    // MARK: - File Downloads
 
-struct TGUser: Identifiable, Equatable {
-    let id: Int64
-    let firstName: String
-    let lastName: String?
-    let username: String?
-    
-    var displayName: String {
-        if let lastName = lastName {
-            return "\(firstName) \(lastName)"
+    func downloadVoice(_ voiceNote: VoiceNote, completion: @escaping (URL?) -> Void) {
+        let fileId = voiceNote.voice.id
+        print("📥 Downloading voice file: \(fileId)")
+
+        Task {
+            do {
+                let file = try await api?.downloadFile(
+                    fileId: fileId,
+                    limit: 0,
+                    offset: 0,
+                    priority: 32,
+                    synchronous: true
+                )
+
+                if let path = file?.local.path, !path.isEmpty {
+                    print("📥 Downloaded to: \(path)")
+                    completion(URL(fileURLWithPath: path))
+                } else {
+                    completion(nil)
+                }
+            } catch {
+                print("❌ Download error: \(error)")
+                completion(nil)
+            }
         }
-        return firstName
     }
-}
 
-struct TGChat: Identifiable, Equatable {
-    let id: Int64
-    let title: String
-    let username: String?
-    let type: ChatType
-    var unreadCount: Int
-    var lastMessage: TGMessage?
-    
-    enum ChatType {
-        case `private`
-        case group
-        case supergroup
-        case channel
+    private func handleFileUpdate(_ file: File) {
+        print("📁 File update: \(file.id), downloaded: \(file.local.isDownloadingCompleted)")
+
+        if file.local.isDownloadingCompleted, !file.local.path.isEmpty {
+            NotificationCenter.default.post(
+                name: .voiceDownloaded,
+                object: URL(fileURLWithPath: file.local.path)
+            )
+        }
     }
-}
 
-struct TGMessage: Identifiable, Equatable {
-    let id: Int64
-    let chatId: Int64
-    let senderId: Int64
-    var content: TGMessageContent
-    let date: Date
-    let isOutgoing: Bool
-    var sendingState: SendingState
-    
-    enum SendingState {
-        case pending
-        case sent
-        case failed
+    // MARK: - Demo Mode
+
+    #if DEBUG
+    private func setupDemoMode() {
+        print("📱 TelegramService: Demo mode enabled")
+        isDemoMode = true
+        authorizationState = .authorizationStateWaitPhoneNumber
     }
-}
 
-enum TGMessageContent: Equatable {
-    case text(String)
-    case voice(TGVoiceNote)
-    case photo(TGPhoto)
-    case other
-}
+    func simulateLogin() {
+        guard isDemoMode else { return }
 
-struct TGVoiceNote: Equatable {
-    let duration: Int
-    let waveform: Data?
-    var localPath: String?
-    var remoteId: String?
-}
-
-struct TGPhoto: Equatable {
-    let id: String
-    var localPath: String?
-}
-
-struct TGFile: Identifiable {
-    let id: Int32
-    var localPath: String?
-    var isDownloaded: Bool
-    var downloadedSize: Int
-    var expectedSize: Int
-}
-
-struct TGError: Error, Identifiable {
-    let id = UUID()
-    let code: Int
-    let message: String
-}
-
-enum TGUpdate {
-    case authorizationState(TelegramService.AuthState)
-    case connectionState(TelegramService.ConnectionState)
-    case newMessage(TGMessage)
-    case messageContent(messageId: Int64, chatId: Int64, content: TGMessageContent)
-    case file(TGFile)
-    case newChat(TGChat)
+        authorizationState = .authorizationStateReady
+        print("📱 Demo: Simulated login")
+    }
+    #endif
 }
 
 // MARK: - Notifications

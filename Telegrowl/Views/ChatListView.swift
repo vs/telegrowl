@@ -1,4 +1,5 @@
 import SwiftUI
+import TDLibKit
 
 struct ChatListView: View {
     @EnvironmentObject var telegramService: TelegramService
@@ -7,13 +8,12 @@ struct ChatListView: View {
     @State private var searchText = ""
     @State private var isSearching = false
     
-    var filteredChats: [TGChat] {
+    var filteredChats: [Chat] {
         if searchText.isEmpty {
             return telegramService.chats
         }
         return telegramService.chats.filter { chat in
-            chat.title.localizedCaseInsensitiveContains(searchText) ||
-            (chat.username?.localizedCaseInsensitiveContains(searchText) ?? false)
+            chat.title.localizedCaseInsensitiveContains(searchText)
         }
     }
     
@@ -45,7 +45,7 @@ struct ChatListView: View {
                         Text("No chats found")
                             .foregroundColor(.secondary)
                     } else {
-                        ForEach(filteredChats) { chat in
+                        ForEach(filteredChats, id: \.id) { chat in
                             ChatRow(chat: chat)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
@@ -77,37 +77,29 @@ struct ChatListView: View {
 // MARK: - Chat Row
 
 struct ChatRow: View {
-    let chat: TGChat
-    
+    let chat: Chat
+
     var body: some View {
         HStack(spacing: 12) {
-            // Avatar
             chatAvatar
-            
-            // Info
+
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(chat.title)
                         .fontWeight(.medium)
-                    
+
                     Spacer()
-                    
+
                     if let lastMessage = chat.lastMessage {
-                        Text(formatTime(lastMessage.date))
+                        Text(formatTime(Date(timeIntervalSince1970: TimeInterval(lastMessage.date))))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
-                
+
                 HStack {
-                    if let username = chat.username {
-                        Text("@\(username)")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
                     Spacer()
-                    
+
                     if chat.unreadCount > 0 {
                         Text("\(chat.unreadCount)")
                             .font(.caption)

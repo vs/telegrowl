@@ -1,5 +1,7 @@
 import Foundation
 import Combine
+import TDLibKit
+import UIKit
 
 // MARK: - Telegram Service
 
@@ -7,112 +9,97 @@ import Combine
 @MainActor
 class TelegramService: ObservableObject {
     static let shared = TelegramService()
-    
+
+    // MARK: - TDLib Client
+    private var api: TdApi?
+    private var isDemoMode = false
+
     // MARK: - Published State
-    @Published var isAuthenticated = false
-    @Published var authState: AuthState = .initial
-    @Published var currentUser: TGUser?
-    @Published var chats: [TGChat] = []
-    @Published var selectedChat: TGChat?
-    @Published var messages: [TGMessage] = []
-    @Published var connectionState: ConnectionState = .disconnected
-    @Published var error: TGError?
-    
+    @Published var authorizationState: AuthorizationState?
+    @Published var connectionState: ConnectionState?
+    @Published var currentUser: User?
+    @Published var chats: [Chat] = []
+    @Published var selectedChat: Chat?
+    @Published var messages: [Message] = []
+    @Published var error: Swift.Error?
+
+    // Computed for backward compatibility
+    var isAuthenticated: Bool {
+        if case .authorizationStateReady = authorizationState {
+            return true
+        }
+        return false
+    }
+
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
-    private var updateHandler: ((TGUpdate) -> Void)?
-    
-    // MARK: - Auth States
-    enum AuthState: Equatable {
-        case initial
-        case waitingTdlibParameters
-        case waitingPhoneNumber
-        case waitingCode(codeInfo: String?)
-        case waitingPassword(hint: String?)
-        case waitingRegistration
-        case ready
-        case loggingOut
-        case closing
-        case closed
-        case error(String)
-    }
-    
-    enum ConnectionState {
-        case disconnected
-        case connecting
-        case connectingToProxy
-        case updating
-        case ready
-    }
-    
+
     // MARK: - Initialization
-    
+
     private init() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-demo") {
+            setupDemoMode()
+            return
+        }
+        #endif
+
         setupTDLib()
     }
-    
+
     // MARK: - TDLib Setup
-    
+
     private func setupTDLib() {
-        #if DEBUG
-        print("📱 TelegramService: Initializing...")
-        #endif
-        
-        // Create TDLib directories
+        print("📱 TelegramService: Initializing TDLib...")
+
         createTDLibDirectories()
-        
-        // Initialize TDLib client
-        // Note: Actual TDLib initialization requires the framework
-        // This is a placeholder for the MVP
-        
-        #if targetEnvironment(simulator)
-        print("⚠️ Running in Simulator - TDLib may have limited functionality")
-        #endif
-        
-        // For MVP demo, simulate ready state after delay
-        #if DEBUG
-        simulateAuthForDemo()
-        #endif
+
+        let client = TDLibClient()
+        api = TdApi(client: client)
+
+        api?.client.run { [weak self] data in
+            do {
+                let update = try TdApi.decoder.decode(Update.self, from: data)
+                Task { @MainActor in
+                    self?.handleUpdate(update)
+                }
+            } catch {
+                print("❌ Failed to decode update: \(error)")
+            }
+        }
+
+        print("📱 TDLib client created")
     }
-    
+
     private func createTDLibDirectories() {
         let fileManager = FileManager.default
         let paths = [Config.tdlibDatabasePath, Config.tdlibFilesPath]
-        
+
         for path in paths {
             if !fileManager.fileExists(atPath: path) {
                 try? fileManager.createDirectory(atPath: path, withIntermediateDirectories: true)
             }
         }
     }
-    
-    // MARK: - Demo Mode (for testing without TDLib)
-    
-    #if DEBUG
-    private func simulateAuthForDemo() {
-        // Simulate authentication flow for UI testing
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.authState = .waitingPhoneNumber
-        }
+
+    // MARK: - Placeholder methods (to be implemented in tasks 4-8)
+
+    private func handleUpdate(_ update: Update) {
+        // Task 4 will implement this
     }
-    
+
+    private func setupDemoMode() {
+        isDemoMode = true
+        authorizationState = .authorizationStateWaitPhoneNumber
+    }
+
+    // MARK: - Demo Mode (for testing without TDLib)
+
+    #if DEBUG
     func simulateLogin() {
-        isAuthenticated = true
-        authState = .ready
-        connectionState = .ready
-        currentUser = TGUser(id: 123456, firstName: "Demo", lastName: "User", username: "demo_user")
-        
-        // Add demo chat
-        let demoChat = TGChat(
-            id: -1001234567890,
-            title: "🤖 AI Assistant",
-            username: "ai_bot",
-            type: .private,
-            unreadCount: 0,
-            lastMessage: nil
-        )
-        chats = [demoChat]
-        selectedChat = demoChat
+        authorizationState = .authorizationStateReady
+        // Note: currentUser, chats, selectedChat now use TDLibKit types
+        // Full demo mode implementation will be updated in later tasks
     }
     #endif
     

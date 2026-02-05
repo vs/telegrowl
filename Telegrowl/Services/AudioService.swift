@@ -1,6 +1,9 @@
 import Foundation
 import AVFoundation
 import Combine
+#if canImport(UIKit)
+import UIKit
+#endif
 
 class AudioService: NSObject, ObservableObject {
     static let shared = AudioService()

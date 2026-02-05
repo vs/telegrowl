@@ -1,4 +1,5 @@
 import SwiftUI
+import TDLibKit
 
 struct AuthView: View {
     @EnvironmentObject var telegramService: TelegramService
@@ -11,21 +12,31 @@ struct AuthView: View {
     var body: some View {
         NavigationView {
             Form {
-                switch telegramService.authState {
-                case .initial, .waitingPhoneNumber:
-                    phoneSection
-                    
-                case .waitingCode:
-                    codeSection
-                    
-                case .waitingPassword:
-                    passwordSection
-                    
-                case .ready:
-                    successSection
-                    
-                case .error(let message):
-                    errorSection(message)
+                if let state = telegramService.authorizationState {
+                    switch state {
+                    case .authorizationStateWaitPhoneNumber:
+                        phoneSection
+
+                    case .authorizationStateWaitCode:
+                        codeSection
+
+                    case .authorizationStateWaitPassword:
+                        passwordSection
+
+                    case .authorizationStateReady:
+                        successSection
+
+                    default:
+                        // Handle other states (initial, closing, etc.)
+                        ProgressView("Connecting...")
+                    }
+                } else {
+                    ProgressView("Initializing...")
+                }
+
+                // Show error if present
+                if let error = telegramService.error {
+                    errorSection(error.localizedDescription)
                 }
             }
             .navigationTitle("Login to Telegram")
@@ -111,7 +122,7 @@ struct AuthView: View {
     }
     
     // MARK: - Error Section
-    
+
     private func errorSection(_ message: String) -> some View {
         Section {
             HStack {
@@ -119,9 +130,9 @@ struct AuthView: View {
                     .foregroundColor(.red)
                 Text(message)
             }
-            
+
             Button("Try Again") {
-                telegramService.authState = .waitingPhoneNumber
+                telegramService.error = nil
             }
         }
     }

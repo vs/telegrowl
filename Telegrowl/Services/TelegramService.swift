@@ -27,7 +27,7 @@ class TelegramService: ObservableObject {
 
     // Computed for backward compatibility
     var isAuthenticated: Bool {
-        if case .authorizationStateReady = authorizationState {
+        if case .authorizationStateReady? = authorizationState {
             return true
         }
         return false
@@ -179,6 +179,21 @@ class TelegramService: ObservableObject {
     func sendPhoneNumber(_ phone: String) {
         print("📱 Sending phone number: \(phone.prefix(4))****")
 
+        #if DEBUG
+        if isDemoMode {
+            // In demo mode, simulate transition to code entry state.
+            // Note: TDLibKit types have internal initializers, so we can't create
+            // AuthorizationStateWaitCode with proper parameters. We use a simple
+            // state transition that the UI can handle.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                // Transition directly to ready state since we can't create intermediate states
+                self.authorizationState = .authorizationStateReady
+                print("📱 Demo: Simulated phone verification -> ready")
+            }
+            return
+        }
+        #endif
+
         Task {
             do {
                 try await api?.setAuthenticationPhoneNumber(
@@ -302,7 +317,8 @@ class TelegramService: ObservableObject {
                     onlyLocal: false
                 )
 
-                messages = history?.messages ?? []
+                // TDLib returns newest-first, reverse for oldest-first display (standard chat order)
+                messages = Array((history?.messages ?? []).reversed())
                 print("📱 Loaded \(messages.count) messages")
             } catch {
                 print("❌ Failed to load messages: \(error)")
@@ -365,9 +381,21 @@ class TelegramService: ObservableObject {
     }
 
     private func handleMessageContentUpdate(messageId: Int64, chatId: Int64, content: MessageContent) {
-        if let index = messages.firstIndex(where: { $0.id == messageId && $0.chatId == chatId }) {
-            print("📱 Message content updated: \(messageId)")
-            // Note: Message is a struct with let content, updates come via new message events
+        guard chatId == selectedChat?.id else { return }
+
+        // Message is a struct with `let content`, so we can't mutate it directly.
+        // Reload the updated message from TDLib instead.
+        Task {
+            do {
+                if let updatedMessage = try await api?.getMessage(chatId: chatId, messageId: messageId) {
+                    if let index = messages.firstIndex(where: { $0.id == messageId }) {
+                        messages[index] = updatedMessage
+                        print("📱 Message content updated: \(messageId)")
+                    }
+                }
+            } catch {
+                print("❌ Failed to reload message: \(error)")
+            }
         }
     }
 

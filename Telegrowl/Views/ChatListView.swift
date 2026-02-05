@@ -24,7 +24,9 @@ struct ChatListView: View {
                 Section {
                     HStack {
                         TextField("@username", text: $searchText)
+                            #if os(iOS)
                             .textInputAutocapitalization(.never)
+                            #endif
                             .autocorrectionDisabled()
                         
                         if !searchText.isEmpty && searchText.hasPrefix("@") {
@@ -59,7 +61,9 @@ struct ChatListView: View {
                 }
             }
             .navigationTitle("Select Chat")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -150,9 +154,9 @@ struct ChatRow: View {
         return String(chat.title.prefix(2)).uppercased()
     }
     
-    private func formatTime(_ date: Date) -> String {
+    private func formatTime(_ date: Foundation.Date) -> String {
         let calendar = Calendar.current
-        
+
         if calendar.isDateInToday(date) {
             let formatter = DateFormatter()
             formatter.timeStyle = .short

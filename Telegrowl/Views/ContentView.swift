@@ -59,7 +59,7 @@ struct ContentView: View {
             }
         } message: {
             if let error = telegramService.error {
-                Text(error.message)
+                Text(error.localizedDescription)
             }
         }
     }
@@ -343,7 +343,7 @@ struct ContentView: View {
         telegramService.sendVoiceMessage(audioURL: url, duration: duration, waveform: waveform)
     }
     
-    private func handleNewVoiceMessage(_ notification: Notification) {
+    private func handleNewVoiceMessage(_ notification: Foundation.Notification) {
         guard Config.autoPlayResponses else { return }
 
         if let message = notification.object as? Message,

@@ -189,6 +189,6 @@ extension AudioService: AVAudioPlayerDelegate {
 
 // MARK: - Notifications
 
-extension Notification.Name {
-    static let recordingAutoStopped = Notification.Name("recordingAutoStopped")
+extension Foundation.Notification.Name {
+    static let recordingAutoStopped = Foundation.Notification.Name("recordingAutoStopped")
 }

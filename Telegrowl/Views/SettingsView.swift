@@ -32,7 +32,9 @@ struct SettingsView: View {
                 aboutSection
             }
             .navigationTitle("Settings")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
@@ -76,10 +78,10 @@ struct SettingsView: View {
                         }
                         
                         VStack(alignment: .leading) {
-                            Text(user.displayName)
+                            Text("\(user.firstName) \(user.lastName)".trimmingCharacters(in: .whitespaces))
                                 .fontWeight(.medium)
-                            
-                            if let username = user.username {
+
+                            if let username = user.usernames?.activeUsernames.first {
                                 Text("@\(username)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -128,7 +130,9 @@ struct SettingsView: View {
                 Spacer()
                 TextField("@username", text: $targetUsername)
                     .multilineTextAlignment(.trailing)
+                    #if os(iOS)
                     .textInputAutocapitalization(.never)
+                    #endif
                     .autocorrectionDisabled()
                     .foregroundColor(.secondary)
             }

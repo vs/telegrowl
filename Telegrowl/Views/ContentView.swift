@@ -1,4 +1,5 @@
 import SwiftUI
+import TDLibKit
 
 struct ContentView: View {
     @EnvironmentObject var telegramService: TelegramService
@@ -298,28 +299,32 @@ struct ContentView: View {
     // MARK: - Helpers
     
     private var connectionStatusColor: Color {
-        switch telegramService.connectionState {
-        case .ready:
+        guard let state = telegramService.connectionState else { return .red }
+
+        switch state {
+        case .connectionStateReady:
             return .green
-        case .connecting, .connectingToProxy, .updating:
+        case .connectionStateConnecting, .connectionStateConnectingToProxy, .connectionStateUpdating:
             return .yellow
-        case .disconnected:
+        case .connectionStateWaitingForNetwork:
             return .red
         }
     }
     
     private var connectionStatusText: String {
-        switch telegramService.connectionState {
-        case .ready:
+        guard let state = telegramService.connectionState else { return "Disconnected" }
+
+        switch state {
+        case .connectionStateReady:
             return "Connected"
-        case .connecting:
+        case .connectionStateConnecting:
             return "Connecting..."
-        case .connectingToProxy:
+        case .connectionStateConnectingToProxy:
             return "Connecting to proxy..."
-        case .updating:
+        case .connectionStateUpdating:
             return "Updating..."
-        case .disconnected:
-            return "Disconnected"
+        case .connectionStateWaitingForNetwork:
+            return "Waiting for network..."
         }
     }
     
@@ -340,13 +345,12 @@ struct ContentView: View {
     
     private func handleNewVoiceMessage(_ notification: Notification) {
         guard Config.autoPlayResponses else { return }
-        
-        if let message = notification.object as? TGMessage,
+
+        if let message = notification.object as? Message,
            !message.isOutgoing,
-           case .voice(let voiceNote) = message.content {
-            
-            // Download and play
-            telegramService.downloadVoice(voiceNote) { url in
+           case .messageVoiceNote(let voiceContent) = message.content {
+
+            telegramService.downloadVoice(voiceContent.voiceNote) { url in
                 if let url = url {
                     audioService.play(url: url)
                 }

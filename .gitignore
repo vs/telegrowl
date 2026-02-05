@@ -7,6 +7,9 @@
 *.playground/*
 !*.playground/Contents.swift
 !*.playground/contents.xcplayground
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
 
 # Build
 build/
@@ -19,24 +22,52 @@ DerivedData/
 *.ipa
 *.dSYM.zip
 *.dSYM
+*.o
+*.moved-aside
 
 # Swift Package Manager
 .build/
+.swiftpm/
 Packages/
 Package.resolved
 
 # CocoaPods
 Pods/
+Podfile.lock
 
 # Carthage
 Carthage/Build/
+Carthage/Checkouts/
 
 # Secrets
 Config.swift
 *.secret
+*.pem
+*.p12
+*.mobileprovision
+.env
+.env.*
 
 # macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# IDEs
+.idea/
+*.swp
+*.swo
+.vscode/
+.claude/settings.local.json
+
+# Testing & CI
+*.xcresult
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+coverage/
 
 # TDLib files
 td_api.json

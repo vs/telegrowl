@@ -14,14 +14,13 @@ let package = Package(
     ],
     dependencies: [
         // TDLib Swift wrapper
-        // Note: You may need to use a different TDLib package or build from source
-        // .package(url: "https://github.com/Swiftgram/TDLibKit.git", from: "3.0.0"),
+        .package(url: "https://github.com/Swiftgram/TDLibKit.git", exact: "1.5.2-tdlib-1.8.60-cb863c16"),
     ],
     targets: [
         .target(
             name: "Telegrowl",
             dependencies: [
-                // "TDLibKit",
+                "TDLibKit",
             ],
             path: "Telegrowl"
         ),

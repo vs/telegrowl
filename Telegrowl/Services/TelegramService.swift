@@ -1,7 +1,9 @@
 import Foundation
 import Combine
 import TDLibKit
+#if canImport(UIKit)
 import UIKit
+#endif
 
 // MARK: - Telegram Service
 
@@ -54,14 +56,15 @@ class TelegramService: ObservableObject {
 
         createTDLibDirectories()
 
-        let client = TDLibClient()
+        let client = TdClientImpl()
         api = TdApi(client: client)
 
         api?.client.run { [weak self] data in
+            guard let self = self, let api = self.api else { return }
             do {
-                let update = try TdApi.decoder.decode(Update.self, from: data)
+                let update = try api.decoder.decode(Update.self, from: data)
                 Task { @MainActor in
-                    self?.handleUpdate(update)
+                    self.handleUpdate(update)
                 }
             } catch {
                 print("❌ Failed to decode update: \(error)")
@@ -139,6 +142,14 @@ class TelegramService: ObservableObject {
     }
 
     private func setTdlibParameters() async {
+        #if canImport(UIKit)
+        let deviceModel = UIDevice.current.model
+        let systemVersion = UIDevice.current.systemVersion
+        #else
+        let deviceModel = "Mac"
+        let systemVersion = ProcessInfo.processInfo.operatingSystemVersionString
+        #endif
+
         do {
             try await api?.setTdlibParameters(
                 apiHash: Config.telegramApiHash,
@@ -146,10 +157,10 @@ class TelegramService: ObservableObject {
                 applicationVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0",
                 databaseDirectory: Config.tdlibDatabasePath,
                 databaseEncryptionKey: Data(),
-                deviceModel: UIDevice.current.model,
+                deviceModel: deviceModel,
                 filesDirectory: Config.tdlibFilesPath,
                 systemLanguageCode: Locale.current.language.languageCode?.identifier ?? "en",
-                systemVersion: UIDevice.current.systemVersion,
+                systemVersion: systemVersion,
                 useChatInfoDatabase: true,
                 useFileDatabase: true,
                 useMessageDatabase: true,
@@ -311,24 +322,24 @@ class TelegramService: ObservableObject {
 
         Task {
             do {
-                let inputFile = InputFile.inputFileLocal(path: audioURL.path)
+                let inputFile = InputFile.inputFileLocal(InputFileLocal(path: audioURL.path))
                 let voiceNote = InputMessageContent.inputMessageVoiceNote(
                     InputMessageVoiceNote(
                         caption: nil,
                         duration: duration,
                         selfDestructType: nil,
                         voiceNote: inputFile,
-                        waveform: waveform?.base64EncodedString() ?? ""
+                        waveform: waveform ?? Data()
                     )
                 )
 
                 _ = try await api?.sendMessage(
                     chatId: chat.id,
                     inputMessageContent: voiceNote,
-                    messageThreadId: 0,
                     options: nil,
                     replyMarkup: nil,
-                    replyTo: nil
+                    replyTo: nil,
+                    topicId: nil
                 )
 
                 print("📤 Voice message sent")
@@ -420,7 +431,7 @@ class TelegramService: ObservableObject {
 
 // MARK: - Notifications
 
-extension Notification.Name {
-    static let newVoiceMessage = Notification.Name("newVoiceMessage")
-    static let voiceDownloaded = Notification.Name("voiceDownloaded")
+extension Foundation.Notification.Name {
+    static let newVoiceMessage = Foundation.Notification.Name("newVoiceMessage")
+    static let voiceDownloaded = Foundation.Notification.Name("voiceDownloaded")
 }

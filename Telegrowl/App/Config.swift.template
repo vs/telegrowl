@@ -5,7 +5,7 @@ import Foundation
 /// Get API credentials at https://my.telegram.org/apps
 struct Config {
     // MARK: - Telegram API (REQUIRED)
-    static let telegramApiId: Int32 = 0  // Your api_id
+    static let telegramApiId: Int = 0  // Your api_id
     static let telegramApiHash = ""       // Your api_hash
 
     // MARK: - TDLib Paths

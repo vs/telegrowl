@@ -40,7 +40,9 @@ struct AuthView: View {
                 }
             }
             .navigationTitle("Login to Telegram")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -56,9 +58,11 @@ struct AuthView: View {
     private var phoneSection: some View {
         Section {
             TextField("Phone Number", text: $phoneNumber)
+                #if os(iOS)
                 .keyboardType(.phonePad)
                 .textContentType(.telephoneNumber)
-            
+                #endif
+
             Button("Send Code") {
                 telegramService.sendPhoneNumber(phoneNumber)
             }
@@ -75,9 +79,11 @@ struct AuthView: View {
     private var codeSection: some View {
         Section {
             TextField("Verification Code", text: $code)
+                #if os(iOS)
                 .keyboardType(.numberPad)
                 .textContentType(.oneTimeCode)
-            
+                #endif
+
             Button("Verify") {
                 telegramService.sendCode(code)
             }

@@ -116,7 +116,7 @@ struct MessageBubble: View {
         }
     }
 
-    private func formatTime(_ date: Date) -> String {
+    private func formatTime(_ date: Foundation.Date) -> String {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: date)

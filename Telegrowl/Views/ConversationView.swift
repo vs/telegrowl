@@ -1,16 +1,17 @@
 import SwiftUI
+import TDLibKit
 
 struct ConversationView: View {
     @EnvironmentObject var telegramService: TelegramService
     @EnvironmentObject var audioService: AudioService
-    
+
     @State private var scrollToBottom = false
-    
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    ForEach(telegramService.messages) { message in
+                    ForEach(telegramService.messages, id: \.id) { message in
                         MessageBubble(message: message)
                             .id(message.id)
                     }
@@ -31,19 +32,18 @@ struct ConversationView: View {
 // MARK: - Message Bubble
 
 struct MessageBubble: View {
-    let message: TGMessage
+    let message: Message
     @EnvironmentObject var audioService: AudioService
-    
+
     @State private var isPlaying = false
-    
+
     var body: some View {
         HStack {
             if message.isOutgoing {
                 Spacer(minLength: 60)
             }
-            
+
             VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 4) {
-                // Content
                 contentView
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -53,68 +53,69 @@ struct MessageBubble: View {
                             : Color(hex: "2a2a3e")
                     )
                     .cornerRadius(16)
-                
-                // Time and status
+
                 HStack(spacing: 4) {
-                    Text(formatTime(message.date))
+                    Text(formatTime(Date(timeIntervalSince1970: TimeInterval(message.date))))
                         .font(.caption2)
                         .foregroundColor(.white.opacity(0.5))
-                    
+
                     if message.isOutgoing {
                         sendingStateIcon
                     }
                 }
             }
-            
+
             if !message.isOutgoing {
                 Spacer(minLength: 60)
             }
         }
     }
-    
+
     @ViewBuilder
     private var contentView: some View {
         switch message.content {
-        case .text(let text):
-            Text(text)
+        case .messageText(let text):
+            Text(text.text.text)
                 .foregroundColor(.white)
-            
-        case .voice(let voiceNote):
+
+        case .messageVoiceNote(let voiceContent):
             VoiceMessageView(
-                voiceNote: voiceNote,
+                voiceNote: voiceContent.voiceNote,
                 isPlaying: $isPlaying,
                 isOutgoing: message.isOutgoing
             )
-            
-        case .photo:
+
+        case .messagePhoto:
             Image(systemName: "photo")
                 .foregroundColor(.white)
-            
-        case .other:
+
+        default:
             Text("[Unsupported message]")
                 .foregroundColor(.white.opacity(0.5))
                 .italic()
         }
     }
-    
+
     @ViewBuilder
     private var sendingStateIcon: some View {
-        switch message.sendingState {
-        case .pending:
-            Image(systemName: "clock")
-                .font(.caption2)
-                .foregroundColor(.white.opacity(0.5))
-        case .sent:
+        if let sendingState = message.sendingState {
+            switch sendingState {
+            case .messageSendingStatePending:
+                Image(systemName: "clock")
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.5))
+            case .messageSendingStateFailed:
+                Image(systemName: "exclamationmark.circle")
+                    .font(.caption2)
+                    .foregroundColor(.red)
+            }
+        } else {
             Image(systemName: "checkmark")
                 .font(.caption2)
                 .foregroundColor(.white.opacity(0.5))
-        case .failed:
-            Image(systemName: "exclamationmark.circle")
-                .font(.caption2)
-                .foregroundColor(.red)
         }
     }
-    
+
     private func formatTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
@@ -125,27 +126,25 @@ struct MessageBubble: View {
 // MARK: - Voice Message View
 
 struct VoiceMessageView: View {
-    let voiceNote: TGVoiceNote
+    let voiceNote: VoiceNote
     @Binding var isPlaying: Bool
     let isOutgoing: Bool
-    
+
     @EnvironmentObject var audioService: AudioService
-    
+    @EnvironmentObject var telegramService: TelegramService
+
     var body: some View {
         HStack(spacing: 12) {
-            // Play button
             Button(action: togglePlayback) {
                 Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                     .font(.system(size: 36))
                     .foregroundColor(.white)
             }
-            
+
             VStack(alignment: .leading, spacing: 4) {
-                // Waveform placeholder
                 WaveformView(waveform: voiceNote.waveform, isPlaying: isPlaying)
                     .frame(height: 24)
-                
-                // Duration
+
                 Text(formatDuration(voiceNote.duration))
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.7))
@@ -153,22 +152,27 @@ struct VoiceMessageView: View {
         }
         .frame(width: 200)
     }
-    
+
     private func togglePlayback() {
         if isPlaying {
             audioService.stopPlayback()
             isPlaying = false
         } else {
-            if let path = voiceNote.localPath {
-                audioService.play(url: URL(fileURLWithPath: path))
+            let localPath = voiceNote.voice.local.path
+            if !localPath.isEmpty {
+                audioService.play(url: URL(fileURLWithPath: localPath))
                 isPlaying = true
             } else {
-                // Need to download first
-                print("📥 Need to download voice first")
+                telegramService.downloadVoice(voiceNote) { url in
+                    if let url = url {
+                        audioService.play(url: url)
+                        isPlaying = true
+                    }
+                }
             }
         }
     }
-    
+
     private func formatDuration(_ seconds: Int) -> String {
         let minutes = seconds / 60
         let secs = seconds % 60
@@ -179,9 +183,9 @@ struct VoiceMessageView: View {
 // MARK: - Waveform View
 
 struct WaveformView: View {
-    let waveform: Data?
+    let waveform: Data
     let isPlaying: Bool
-    
+
     var body: some View {
         GeometryReader { geometry in
             HStack(spacing: 2) {
@@ -199,14 +203,14 @@ struct WaveformView: View {
             }
         }
     }
-    
+
     private func getBarHeight(for index: Int, maxHeight: CGFloat) -> CGFloat {
         // If we have waveform data, use it
-        if let waveform = waveform, index < waveform.count {
+        if index < waveform.count {
             let value = CGFloat(waveform[index]) / 255.0
             return max(4, value * maxHeight)
         }
-        
+
         // Otherwise generate random-looking heights
         let heights: [CGFloat] = [0.3, 0.5, 0.7, 0.4, 0.8, 0.6, 0.9, 0.5, 0.7, 0.4,
                                   0.6, 0.8, 0.5, 0.7, 0.9, 0.4, 0.6, 0.8, 0.5, 0.7,
@@ -218,7 +222,7 @@ struct WaveformView: View {
 #Preview {
     ZStack {
         Color(hex: "1a1a2e").ignoresSafeArea()
-        
+
         ConversationView()
             .environmentObject(TelegramService.shared)
             .environmentObject(AudioService.shared)

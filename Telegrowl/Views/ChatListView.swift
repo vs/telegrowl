@@ -3,6 +3,7 @@ import TDLibKit
 
 struct ChatListView: View {
     @EnvironmentObject var telegramService: TelegramService
+    @Binding var isDrivingMode: Bool
 
     @State private var searchText = ""
     @State private var showingSettings = false
@@ -42,7 +43,18 @@ struct ChatListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button(action: { showingSettings = true }) {
-                    Image(systemName: "gear")
+                    if let user = telegramService.currentUser {
+                        AvatarView(photo: user.profilePhoto, title: user.firstName, size: 28)
+                    } else {
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(TelegramTheme.accent)
+                    }
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: { isDrivingMode = true }) {
+                    Image(systemName: "car.fill")
                         .foregroundColor(TelegramTheme.accent)
                 }
             }
@@ -147,7 +159,7 @@ struct ChatRow: View {
 
 #Preview {
     NavigationStack {
-        ChatListView()
+        ChatListView(isDrivingMode: .constant(false))
             .environmentObject(TelegramService.shared)
     }
 }

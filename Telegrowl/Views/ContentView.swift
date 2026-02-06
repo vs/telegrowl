@@ -331,16 +331,34 @@ struct ContentView: View {
     // MARK: - Actions
     
     private func sendRecording() {
-        guard let url = audioService.stopRecording() else { return }
-        
+        guard let m4aURL = audioService.stopRecording() else { return }
+
         let duration = Int(audioService.recordingDuration)
         guard duration > 0 else {
             print("⚠️ Recording too short, not sending")
             return
         }
-        
-        let waveform = audioService.generateWaveform(from: url)
-        telegramService.sendVoiceMessage(audioURL: url, duration: duration, waveform: waveform)
+
+        Task {
+            do {
+                let (oggURL, waveform) = try await AudioConverter.convertToOpus(inputURL: m4aURL)
+
+                telegramService.sendVoiceMessage(
+                    audioURL: oggURL,
+                    duration: duration,
+                    waveform: waveform
+                )
+
+                try? FileManager.default.removeItem(at: m4aURL)
+            } catch {
+                print("❌ Conversion failed: \(error), sending M4A as fallback")
+                telegramService.sendVoiceMessage(
+                    audioURL: m4aURL,
+                    duration: duration,
+                    waveform: nil
+                )
+            }
+        }
     }
     
     private func handleNewVoiceMessage(_ notification: Foundation.Notification) {

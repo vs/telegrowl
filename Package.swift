@@ -16,12 +16,15 @@ let package = Package(
     dependencies: [
         // TDLib Swift wrapper
         .package(url: "https://github.com/Swiftgram/TDLibKit.git", exact: "1.5.2-tdlib-1.8.60-cb863c16"),
+        // OGG/Opus encoding for Telegram voice messages
+        .package(url: "https://github.com/element-hq/swift-ogg.git", from: "0.0.3"),
     ],
     targets: [
         .target(
             name: "Telegrowl",
             dependencies: [
                 "TDLibKit",
+                .product(name: "SwiftOGG", package: "swift-ogg"),
             ],
             path: "Telegrowl"
         ),

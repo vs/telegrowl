@@ -8,20 +8,24 @@ Convert recorded M4A/AAC audio to OGG/Opus format required by Telegram voice mes
 
 | Decision | Choice |
 |----------|--------|
-| Conversion library | FFmpegKit (audio variant) |
+| Conversion library | SwiftOGG (element-hq/swift-ogg) - lightweight M4A↔OGG/Opus converter using libopus/libogg |
 | When to convert | After recording stops, before sending |
-| Waveform generation | Yes, 63 bytes via FFmpeg audio analysis |
+| Waveform generation | Yes, 63 bytes via AVFoundation PCM analysis |
+
+**Note:** Originally planned FFmpegKit, but arthenica/ffmpeg-kit was archived June 2025. SwiftOGG is purpose-built for exactly this conversion and much lighter weight.
 
 ## Dependencies
 
-**FFmpegKit via SPM:**
+**SwiftOGG via SPM:**
 ```swift
 // Package.swift
-.package(url: "https://github.com/arthenica/ffmpeg-kit.git", from: "6.0.0")
+.package(url: "https://github.com/element-hq/swift-ogg.git", from: "0.0.3")
 
-// Target dependency - use audio-only variant (~15MB)
-"ffmpeg-kit-ios-audio"
+// Target dependency
+.product(name: "SwiftOGG", package: "swift-ogg")
 ```
+
+Transitive dependencies: opus-swift (0.8.4), ogg-swift (0.8.3) - provides libopus/libogg XCFrameworks.
 
 ## Architecture
 
@@ -40,12 +44,13 @@ Telegrowl/Services/AudioConverter.swift
 ## AudioConverter Implementation
 
 ```swift
-import ffmpegkit
+import Foundation
+import AVFoundation
+import SwiftOGG
 
 enum ConversionError: Error {
-    case ffmpegFailed
     case inputFileNotFound
-    case outputWriteFailed
+    case conversionFailed(Error)
 }
 
 class AudioConverter {
@@ -53,122 +58,37 @@ class AudioConverter {
     /// Converts M4A to OGG/Opus format for Telegram
     /// Returns tuple of (outputURL, waveformData)
     static func convertToOpus(inputURL: URL) async throws -> (URL, Data) {
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw ConversionError.inputFileNotFound
+        }
+
         let outputURL = inputURL
             .deletingPathExtension()
             .appendingPathExtension("ogg")
 
-        // FFmpeg command for Telegram-compatible voice
-        let command = """
-            -i "\(inputURL.path)" \
-            -c:a libopus \
-            -b:a 32k \
-            -vbr on \
-            -application voip \
-            -ar 48000 \
-            -ac 1 \
-            -y "\(outputURL.path)"
-            """
-
-        return try await withCheckedThrowingContinuation { continuation in
-            FFmpegKit.executeAsync(command) { session in
-                if session?.getReturnCode()?.isValueSuccess() == true {
-                    let waveform = Self.generateWaveform(from: outputURL)
-                    continuation.resume(returning: (outputURL, waveform))
-                } else {
-                    continuation.resume(throwing: ConversionError.ffmpegFailed)
-                }
-            }
+        do {
+            try OGGConverter.convertM4aFileToOpusOGG(src: inputURL, dest: outputURL)
+        } catch {
+            throw ConversionError.conversionFailed(error)
         }
+
+        let waveform = generateWaveform(from: inputURL)
+        return (outputURL, waveform)
     }
 
-    /// Generates Telegram-compatible waveform (63 bytes, 5-bit values)
+    /// Generates Telegram-compatible waveform (63 bytes, 5-bit values 0-31)
+    /// Uses AVFoundation to read PCM samples and extract peak levels
     static func generateWaveform(from url: URL) -> Data {
-        var samples: [UInt8] = []
-
-        let tempFile = FileManager.default.temporaryDirectory
-            .appendingPathComponent("levels.txt")
-
-        let command = """
-            -i "\(url.path)" \
-            -af "astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.Peak_level:file=\(tempFile.path)" \
-            -f null -
-            """
-
-        let session = FFmpegKit.execute(command)
-
-        if session?.getReturnCode()?.isValueSuccess() == true,
-           let data = try? String(contentsOf: tempFile) {
-            let levels = parseLevels(data)
-            samples = downsample(levels, to: 63)
-        }
-
-        // Fallback: generate placeholder waveform if extraction fails
-        if samples.isEmpty {
-            samples = (0..<63).map { _ in UInt8.random(in: 8...24) }
-        }
-
-        try? FileManager.default.removeItem(at: tempFile)
-        return Data(samples)
-    }
-
-    private static func parseLevels(_ data: String) -> [Float] {
-        // Parse FFmpeg astats output for peak levels
-        data.components(separatedBy: .newlines)
-            .compactMap { line -> Float? in
-                guard line.contains("Peak_level") else { return nil }
-                let parts = line.components(separatedBy: "=")
-                guard parts.count >= 2 else { return nil }
-                return Float(parts[1].trimmingCharacters(in: .whitespaces))
-            }
-    }
-
-    private static func downsample(_ input: [Float], to count: Int) -> [UInt8] {
-        guard !input.isEmpty else { return [] }
-        let chunkSize = max(1, input.count / count)
-
-        return (0..<count).map { i in
-            let start = i * chunkSize
-            let end = min(start + chunkSize, input.count)
-            let avg = input[start..<end].reduce(0, +) / Float(end - start)
-            // Convert dB to 0-31 range (5-bit value)
-            let normalized = (avg + 60) / 60  // -60dB to 0dB → 0 to 1
-            return UInt8(min(31, max(0, normalized * 31)))
-        }
+        // Read audio file into PCM buffer
+        // Extract peak amplitude per bucket (63 buckets)
+        // Convert 0.0-1.0 amplitude to 0-31 (5-bit value)
+        // Fallback: random placeholder waveform if analysis fails
     }
 
     /// Cleanup temporary audio files older than 1 hour
-    static func cleanupTempFiles() {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let fileManager = FileManager.default
-
-        guard let files = try? fileManager.contentsOfDirectory(
-            at: documentsPath,
-            includingPropertiesForKeys: [.creationDateKey]
-        ) else { return }
-
-        let cutoff = Date().addingTimeInterval(-3600)
-
-        for file in files where file.pathExtension == "m4a" || file.pathExtension == "ogg" {
-            if let created = try? file.resourceValues(forKeys: [.creationDateKey]).creationDate,
-               created < cutoff {
-                try? fileManager.removeItem(at: file)
-            }
-        }
-    }
+    static func cleanupTempFiles() { ... }
 }
 ```
-
-## FFmpeg Flags Explained
-
-| Flag | Purpose |
-|------|---------|
-| `-c:a libopus` | Use Opus audio codec |
-| `-b:a 32k` | 32kbps bitrate (good for voice) |
-| `-vbr on` | Variable bitrate for efficiency |
-| `-application voip` | Optimize for speech |
-| `-ar 48000` | 48kHz sample rate (Telegram standard) |
-| `-ac 1` | Mono audio |
-| `-y` | Overwrite output file |
 
 ## Integration Points
 
@@ -214,15 +134,16 @@ AudioConverter.cleanupTempFiles()
 
 | Scenario | Fallback |
 |----------|----------|
-| FFmpegKit fails | Send M4A anyway (Telegram may accept) |
-| Waveform generation fails | Send with nil waveform (flat line display) |
+| OGGConverter fails | Send M4A anyway (Telegram may accept) |
+| Waveform generation fails | Send with placeholder waveform |
 | Temp file cleanup fails | Ignore, try again next launch |
 
-## Files to Modify
+## Files Modified
 
 | File | Changes |
 |------|---------|
-| `Package.swift` | Add ffmpeg-kit-ios-audio dependency |
+| `Package.swift` | Add swift-ogg dependency |
 | `AudioConverter.swift` | New file - conversion + waveform |
+| `AudioService.swift` | Remove unused generateWaveform stub |
 | `ContentView.swift` | Update sendRecording() for async conversion |
 | `TelegrowlApp.swift` | Add cleanup call on launch |

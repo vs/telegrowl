@@ -12,6 +12,7 @@ struct TelegrowlApp: App {
                 .environmentObject(audioService)
                 .onAppear {
                     setupAudioSession()
+                    AudioConverter.cleanupTempFiles()
                 }
         }
     }

@@ -99,6 +99,12 @@ struct ContentView: View {
                 onStopRecording: { sendRecording() }
             )
         }
+        .onAppear {
+            if telegramService.selectedChat?.id != chatId,
+               let chat = telegramService.chats.first(where: { $0.id == chatId }) {
+                telegramService.selectChat(chat)
+            }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {

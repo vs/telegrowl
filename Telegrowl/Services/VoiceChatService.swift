@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import Combine
+import Speech
 import TDLibKit
 #if canImport(UIKit)
 import UIKit
@@ -44,6 +45,12 @@ class VoiceChatService: ObservableObject {
     private var playbackCancellable: AnyCancellable?
     private var notificationCancellable: AnyCancellable?
 
+    // MARK: - Speech Recognition
+    private var speechRecognizer: SFSpeechRecognizer?
+    private nonisolated(unsafe) var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private var recognitionRestartTimer: Timer?
+
     // MARK: - Public Methods
 
     /// Start voice chat session for a given chat.
@@ -59,6 +66,7 @@ class VoiceChatService: ObservableObject {
         setupAudioSession()
         startEngine()
         observeIncomingMessages()
+        startSpeechRecognition()
 
         state = .listening
         haptic(.medium)
@@ -76,6 +84,7 @@ class VoiceChatService: ObservableObject {
         notificationCancellable?.cancel()
         notificationCancellable = nil
         AudioService.shared.stopPlayback()
+        stopSpeechRecognition()
 
         state = .idle
     }
@@ -109,6 +118,7 @@ class VoiceChatService: ObservableObject {
         isMuted = false
         print("🎙️ VoiceChat: unmuted")
         haptic(.light)
+        restartSpeechRecognition()
     }
 
     // MARK: - Audio Session
@@ -157,6 +167,8 @@ class VoiceChatService: ObservableObject {
 
     /// Called on the audio thread for every buffer from the input tap.
     private nonisolated func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
+        recognitionRequest?.append(buffer)
+
         guard let channelData = buffer.floatChannelData?[0] else { return }
         let frameCount = Int(buffer.frameLength)
         guard frameCount > 0 else { return }
@@ -414,6 +426,91 @@ class VoiceChatService: ObservableObject {
                 self.playNext()
             }
         }
+    }
+
+    // MARK: - Speech Recognition
+
+    private func startSpeechRecognition() {
+        speechRecognizer = SFSpeechRecognizer()
+        guard let speechRecognizer, speechRecognizer.isAvailable else {
+            print("⚠️ VoiceChat: speech recognition not available")
+            return
+        }
+
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        guard let recognitionRequest else { return }
+
+        recognitionRequest.shouldReportPartialResults = true
+        recognitionRequest.requiresOnDeviceRecognition = true
+
+        recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
+            guard let self else { return }
+
+            if let result {
+                let text = result.bestTranscription.formattedString.lowercased()
+                let muteCmd = Config.muteCommand.lowercased()
+                let unmuteCmd = Config.unmuteCommand.lowercased()
+
+                // Check unmute first (since "unmute" contains "mute")
+                if text.hasSuffix(unmuteCmd) && self.isMuted {
+                    Task { @MainActor in
+                        self.unmute()
+                    }
+                } else if text.hasSuffix(muteCmd) && !self.isMuted {
+                    Task { @MainActor in
+                        self.mute()
+                    }
+                }
+            }
+
+            if let error {
+                print("⚠️ VoiceChat: speech recognition error: \(error)")
+                Task { @MainActor in
+                    self.restartSpeechRecognition()
+                }
+            }
+        }
+
+        // Rolling restart every 50s to avoid Apple's ~60s session limit
+        recognitionRestartTimer = Timer.scheduledTimer(withTimeInterval: 50, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.restartSpeechRecognition()
+            }
+        }
+
+        print("🗣️ VoiceChat: speech recognition started")
+    }
+
+    private func stopSpeechRecognition() {
+        recognitionRestartTimer?.invalidate()
+        recognitionRestartTimer = nil
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        speechRecognizer = nil
+        print("🗣️ VoiceChat: speech recognition stopped")
+    }
+
+    private func restartSpeechRecognition() {
+        stopSpeechRecognition()
+        startSpeechRecognition()
+    }
+
+    // MARK: - Permissions
+
+    static func requestPermissions() async -> Bool {
+        // Microphone (iOS 17+ API)
+        let micGranted = await AVAudioApplication.requestRecordPermission()
+
+        // Speech recognition
+        let speechGranted = await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { status in
+                continuation.resume(returning: status == .authorized)
+            }
+        }
+
+        return micGranted && speechGranted
     }
 
     // MARK: - Haptics

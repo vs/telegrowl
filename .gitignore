@@ -61,6 +61,9 @@ Config.swift
 .vscode/
 .claude/settings.local.json
 
+# Worktrees
+.worktrees/
+
 # Testing & CI
 *.xcresult
 fastlane/report.xml

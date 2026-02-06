@@ -161,13 +161,6 @@ class AudioService: NSObject, ObservableObject {
         isPlaying = false
     }
     
-    // MARK: - Waveform Generation
-    
-    func generateWaveform(from url: URL) -> Data? {
-        // Generate waveform data for Telegram voice message
-        // This is a simplified version - real implementation would analyze audio
-        return nil
-    }
 }
 
 // MARK: - AVAudioRecorderDelegate

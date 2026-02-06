@@ -14,7 +14,7 @@ class TelegramService: ObservableObject {
 
     // MARK: - TDLib Client
     private var manager: TDLibClientManager?
-    private var api: TdApi?
+    private var api: TDLibClient?
     private var isDemoMode = false
 
     // MARK: - Published State
@@ -58,7 +58,7 @@ class TelegramService: ObservableObject {
         createTDLibDirectories()
 
         manager = TDLibClientManager()
-        api = manager?.createClient(updateHandler: { [weak self] data, client in
+        api = manager?.createClient(updateHandler: { [weak self] (data: Data, client: TDLibClient) in
             do {
                 let update = try client.decoder.decode(Update.self, from: data)
                 Task { @MainActor in
@@ -463,7 +463,7 @@ class TelegramService: ObservableObject {
 
 // MARK: - Errors
 
-enum TelegramServiceError: Error {
+enum TelegramServiceError: Swift.Error {
     case notConnected
 }
 

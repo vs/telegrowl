@@ -325,7 +325,7 @@ class TelegramService: ObservableObject {
         }
     }
 
-    func sendVoiceMessage(audioURL: URL, duration: Int, waveform: Data?, chatId: Int64? = nil) {
+    func sendVoiceMessage(audioURL: URL, duration: Int, waveform: Data?, chatId: Int64? = nil) async throws {
         let targetChatId = chatId ?? selectedChat?.id
         guard let targetChatId else {
             print("❌ No chat selected")
@@ -336,34 +336,27 @@ class TelegramService: ObservableObject {
         print("   Duration: \(duration)s")
         print("   File: \(audioURL.lastPathComponent)")
 
-        Task {
-            do {
-                let inputFile = InputFile.inputFileLocal(InputFileLocal(path: audioURL.path))
-                let voiceNote = InputMessageContent.inputMessageVoiceNote(
-                    InputMessageVoiceNote(
-                        caption: nil,
-                        duration: duration,
-                        selfDestructType: nil,
-                        voiceNote: inputFile,
-                        waveform: waveform ?? Data()
-                    )
-                )
+        let inputFile = InputFile.inputFileLocal(InputFileLocal(path: audioURL.path))
+        let voiceNote = InputMessageContent.inputMessageVoiceNote(
+            InputMessageVoiceNote(
+                caption: nil,
+                duration: duration,
+                selfDestructType: nil,
+                voiceNote: inputFile,
+                waveform: waveform ?? Data()
+            )
+        )
 
-                _ = try await api?.sendMessage(
-                    chatId: targetChatId,
-                    inputMessageContent: voiceNote,
-                    options: nil,
-                    replyMarkup: nil,
-                    replyTo: nil,
-                    topicId: nil
-                )
+        _ = try await api?.sendMessage(
+            chatId: targetChatId,
+            inputMessageContent: voiceNote,
+            options: nil,
+            replyMarkup: nil,
+            replyTo: nil,
+            topicId: nil
+        )
 
-                print("📤 Voice message sent")
-            } catch {
-                print("❌ Failed to send voice: \(error)")
-                self.error = error
-            }
-        }
+        print("📤 Voice message sent")
     }
 
     private func handleNewMessage(_ message: Message) {

@@ -9,6 +9,9 @@ struct ContentView: View {
     @State private var showingSettings = false
     @State private var showingChatList = false
     @State private var showingConversation = false
+    @State private var currentToast: ToastData?
+    @State private var toastDismissTask: Task<Void, Never>?
+    @State private var retryAction: (() -> Void)?
     
     var body: some View {
         ZStack {
@@ -23,7 +26,7 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 // Header
                 header
-                
+
                 // Main content
                 if telegramService.isAuthenticated {
                     if showingConversation {
@@ -37,6 +40,17 @@ struct ContentView: View {
                     authPrompt
                 }
             }
+
+            // Toast overlay
+            VStack {
+                if let toast = currentToast {
+                    ToastView(toast: toast, onDismiss: { dismissToast() }, onRetry: retryAction)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .padding(.top, 8)
+                }
+                Spacer()
+            }
+            .animation(.spring(duration: 0.3), value: currentToast)
         }
         .sheet(isPresented: $showingAuth) {
             AuthView()
@@ -53,13 +67,10 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .recordingAutoStopped)) { _ in
             sendRecording()
         }
-        .alert("Error", isPresented: .constant(telegramService.error != nil)) {
-            Button("OK") {
-                telegramService.error = nil
-            }
-        } message: {
+        .onChange(of: telegramService.error?.localizedDescription) {
             if let error = telegramService.error {
-                Text(error.localizedDescription)
+                showToast(ToastData(message: error.localizedDescription, style: .error, icon: "exclamationmark.triangle.fill"))
+                telegramService.error = nil
             }
         }
     }
@@ -339,38 +350,113 @@ struct ContentView: View {
             return
         }
 
-        // Capture chat ID before async gap to avoid sending to wrong chat
-        // if the user switches chats during conversion.
         guard let chatId = telegramService.selectedChat?.id else {
             print("❌ No chat selected")
+            showToast(ToastData(message: "No chat selected", style: .warning, icon: "exclamationmark.triangle.fill"))
             return
         }
 
         let service = telegramService
 
-        // Run conversion off the main actor to avoid freezing UI.
-        Task.detached {
-            do {
-                let (oggURL, waveform) = try await AudioConverter.convertToOpus(inputURL: m4aURL)
+        showToast(ToastData(message: "Converting audio...", style: .info, icon: "waveform", isLoading: true), autoDismiss: false)
 
-                await service.sendVoiceMessage(
-                    audioURL: oggURL,
+        Task.detached {
+            var audioURL = m4aURL
+            var waveform: Data? = nil
+            var usedFallback = false
+
+            do {
+                let (oggURL, wf) = try await AudioConverter.convertToOpus(inputURL: m4aURL)
+                audioURL = oggURL
+                waveform = wf
+            } catch {
+                print("❌ Conversion failed: \(error), sending M4A as fallback")
+                usedFallback = true
+            }
+
+            await MainActor.run {
+                showToast(ToastData(message: "Sending...", style: .info, icon: "paperplane", isLoading: true), autoDismiss: false)
+            }
+
+            do {
+                try await service.sendVoiceMessage(
+                    audioURL: audioURL,
                     duration: duration,
                     waveform: waveform,
                     chatId: chatId
                 )
 
                 try? FileManager.default.removeItem(at: m4aURL)
+
+                await MainActor.run {
+                    if usedFallback {
+                        showToast(ToastData(message: "Sent (without Opus conversion)", style: .warning, icon: "exclamationmark.triangle.fill"))
+                    } else {
+                        showToast(ToastData(message: "Voice message sent", style: .success, icon: "checkmark.circle.fill"))
+                    }
+                }
             } catch {
-                print("❌ Conversion failed: \(error), sending M4A as fallback")
-                await service.sendVoiceMessage(
-                    audioURL: m4aURL,
-                    duration: duration,
-                    waveform: nil,
-                    chatId: chatId
-                )
+                print("❌ Failed to send voice: \(error)")
+                let retryURL = audioURL
+                await MainActor.run {
+                    retryAction = {
+                        retrySend(audioURL: retryURL, m4aURL: m4aURL, duration: duration, waveform: waveform, chatId: chatId)
+                    }
+                    showToast(ToastData(message: "Failed to send", style: .error, icon: "exclamationmark.triangle.fill", hasRetry: true), autoDismiss: false)
+                }
             }
         }
+    }
+
+    private func retrySend(audioURL: URL, m4aURL: URL, duration: Int, waveform: Data?, chatId: Int64) {
+        let service = telegramService
+        retryAction = nil
+        showToast(ToastData(message: "Sending...", style: .info, icon: "paperplane", isLoading: true), autoDismiss: false)
+
+        Task.detached {
+            do {
+                try await service.sendVoiceMessage(
+                    audioURL: audioURL,
+                    duration: duration,
+                    waveform: waveform,
+                    chatId: chatId
+                )
+                try? FileManager.default.removeItem(at: m4aURL)
+                await MainActor.run {
+                    showToast(ToastData(message: "Voice message sent", style: .success, icon: "checkmark.circle.fill"))
+                }
+            } catch {
+                print("❌ Retry failed: \(error)")
+                let retryURL = audioURL
+                await MainActor.run {
+                    retryAction = {
+                        retrySend(audioURL: retryURL, m4aURL: m4aURL, duration: duration, waveform: waveform, chatId: chatId)
+                    }
+                    showToast(ToastData(message: "Failed to send", style: .error, icon: "exclamationmark.triangle.fill", hasRetry: true), autoDismiss: false)
+                }
+            }
+        }
+    }
+
+    private func showToast(_ toast: ToastData, autoDismiss: Bool = true) {
+        toastDismissTask?.cancel()
+        toastDismissTask = nil
+        currentToast = toast
+        if autoDismiss {
+            toastDismissTask = Task {
+                try? await Task.sleep(for: .seconds(3))
+                if !Task.isCancelled {
+                    dismissToast()
+                }
+            }
+        }
+    }
+
+    private func dismissToast() {
+        toastDismissTask?.cancel()
+        toastDismissTask = nil
+        currentToast = nil
+        retryAction = nil
     }
     
     private func handleNewVoiceMessage(_ notification: Foundation.Notification) {

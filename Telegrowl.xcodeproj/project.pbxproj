@@ -1,0 +1,417 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1DE546CE0C62CB93AD2027C4 /* TelegramService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901242977C0E7792517A34D2 /* TelegramService.swift */; };
+		24010F831B01829D3EACD770 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8503B655E47DA3A3BD366E5E /* Config.swift */; };
+		281F6E3FD2EEB04D2EB1A49C /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A5A94D35F564CEC75465CF /* AvatarView.swift */; };
+		2FFD1FB6B646F0E9A40742D6 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8323551A5274A7BE3EEEDE9 /* ChatListView.swift */; };
+		481E58A726410266B8A18B1C /* TelegrowlApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DBA4DC0E031735AAE4DE080 /* TelegrowlApp.swift */; };
+		5DED95F13437E8326743321F /* AudioConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53D54B8842268F1AEF17DF1F /* AudioConverter.swift */; };
+		729D5E8E19AC73F17FE2CF57 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDD19CCEA19643EB97AF41B /* SettingsView.swift */; };
+		79F676128CBD520DF8C450BD /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B187BC3D21B6B451F12DE301 /* AuthView.swift */; };
+		7EEEBCC22863F69383ED6A9E /* RecordButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8526112B82EA468C3BF748CF /* RecordButton.swift */; };
+		7FC04AA31DC2950F6E59FFAB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37493E4411FCCA57C9E8B462 /* ContentView.swift */; };
+		86AFAA06F4AC3C239569858F /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD2A9FF4A2807B0FDC5DDFEC /* ConversationView.swift */; };
+		910B3D2F957C08AF1DA45184 /* TDLibKit in Frameworks */ = {isa = PBXBuildFile; productRef = BFFF8F7C5A24EEC6DEF14AEB /* TDLibKit */; };
+		B297ECA5BF7C0D816876B9C4 /* SwiftOGG in Frameworks */ = {isa = PBXBuildFile; productRef = B0E48CE4F84F397835ED9CB1 /* SwiftOGG */; };
+		DEC0237A8E2EA44464316531 /* AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A75191466C0D8A5D83F833 /* AudioService.swift */; };
+		E07D3789950F71610CD279CE /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FC20F08ECE62E6E0454EA01 /* ToastView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		37493E4411FCCA57C9E8B462 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		53D54B8842268F1AEF17DF1F /* AudioConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConverter.swift; sourceTree = "<group>"; };
+		59AEA2D312F5AFA66B73A7C8 /* Telegrowl.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Telegrowl.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5D8B71203896E952930E85A1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8503B655E47DA3A3BD366E5E /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		8526112B82EA468C3BF748CF /* RecordButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordButton.swift; sourceTree = "<group>"; };
+		901242977C0E7792517A34D2 /* TelegramService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramService.swift; sourceTree = "<group>"; };
+		9DBA4DC0E031735AAE4DE080 /* TelegrowlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegrowlApp.swift; sourceTree = "<group>"; };
+		9FC20F08ECE62E6E0454EA01 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
+		B187BC3D21B6B451F12DE301 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		B8323551A5274A7BE3EEEDE9 /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
+		BD2A9FF4A2807B0FDC5DDFEC /* ConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationView.swift; sourceTree = "<group>"; };
+		D1A5A94D35F564CEC75465CF /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
+		D9A75191466C0D8A5D83F833 /* AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioService.swift; sourceTree = "<group>"; };
+		FEDD19CCEA19643EB97AF41B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		0439EAB91948C22F2D2C15FB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				910B3D2F957C08AF1DA45184 /* TDLibKit in Frameworks */,
+				B297ECA5BF7C0D816876B9C4 /* SwiftOGG in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0FBAEE4DF9FC5AD4E083083C /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				5D8B71203896E952930E85A1 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		1CF0764AA5B34C016C447C27 /* Telegrowl */ = {
+			isa = PBXGroup;
+			children = (
+				1EF8A8B6E3CC0D126C735809 /* App */,
+				0FBAEE4DF9FC5AD4E083083C /* Resources */,
+				5AAA21ED3AF0D1E8F3643CE9 /* Services */,
+				E0655EB7AA485DBF048E6DF1 /* Views */,
+			);
+			path = Telegrowl;
+			sourceTree = "<group>";
+		};
+		1EF8A8B6E3CC0D126C735809 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				8503B655E47DA3A3BD366E5E /* Config.swift */,
+				9DBA4DC0E031735AAE4DE080 /* TelegrowlApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		357913583C403F9CF37A4C58 = {
+			isa = PBXGroup;
+			children = (
+				1CF0764AA5B34C016C447C27 /* Telegrowl */,
+				C07EC427EA9189B0ACF0D07D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		5AAA21ED3AF0D1E8F3643CE9 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				53D54B8842268F1AEF17DF1F /* AudioConverter.swift */,
+				D9A75191466C0D8A5D83F833 /* AudioService.swift */,
+				901242977C0E7792517A34D2 /* TelegramService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		C07EC427EA9189B0ACF0D07D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				59AEA2D312F5AFA66B73A7C8 /* Telegrowl.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E0655EB7AA485DBF048E6DF1 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B187BC3D21B6B451F12DE301 /* AuthView.swift */,
+				D1A5A94D35F564CEC75465CF /* AvatarView.swift */,
+				B8323551A5274A7BE3EEEDE9 /* ChatListView.swift */,
+				37493E4411FCCA57C9E8B462 /* ContentView.swift */,
+				BD2A9FF4A2807B0FDC5DDFEC /* ConversationView.swift */,
+				8526112B82EA468C3BF748CF /* RecordButton.swift */,
+				FEDD19CCEA19643EB97AF41B /* SettingsView.swift */,
+				9FC20F08ECE62E6E0454EA01 /* ToastView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F467B25DB8E99761F36B9633 /* Telegrowl */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D05A2D896558DEA0D0297ED2 /* Build configuration list for PBXNativeTarget "Telegrowl" */;
+			buildPhases = (
+				8035FA82CBBD6877368DA9B8 /* Sources */,
+				0439EAB91948C22F2D2C15FB /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Telegrowl;
+			packageProductDependencies = (
+				BFFF8F7C5A24EEC6DEF14AEB /* TDLibKit */,
+				B0E48CE4F84F397835ED9CB1 /* SwiftOGG */,
+			);
+			productName = Telegrowl;
+			productReference = 59AEA2D312F5AFA66B73A7C8 /* Telegrowl.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B003445BD1474BF27C968D1F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = D3A3AF584B953DF074658F65 /* Build configuration list for PBXProject "Telegrowl" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 357913583C403F9CF37A4C58;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B3205DABF6915A9211A25D10 /* XCRemoteSwiftPackageReference "swift-ogg" */,
+				08DF40B61C23A0AA65293F1C /* XCRemoteSwiftPackageReference "TDLibKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F467B25DB8E99761F36B9633 /* Telegrowl */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8035FA82CBBD6877368DA9B8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5DED95F13437E8326743321F /* AudioConverter.swift in Sources */,
+				DEC0237A8E2EA44464316531 /* AudioService.swift in Sources */,
+				79F676128CBD520DF8C450BD /* AuthView.swift in Sources */,
+				281F6E3FD2EEB04D2EB1A49C /* AvatarView.swift in Sources */,
+				2FFD1FB6B646F0E9A40742D6 /* ChatListView.swift in Sources */,
+				24010F831B01829D3EACD770 /* Config.swift in Sources */,
+				7FC04AA31DC2950F6E59FFAB /* ContentView.swift in Sources */,
+				86AFAA06F4AC3C239569858F /* ConversationView.swift in Sources */,
+				7EEEBCC22863F69383ED6A9E /* RecordButton.swift in Sources */,
+				729D5E8E19AC73F17FE2CF57 /* SettingsView.swift in Sources */,
+				1DE546CE0C62CB93AD2027C4 /* TelegramService.swift in Sources */,
+				481E58A726410266B8A18B1C /* TelegrowlApp.swift in Sources */,
+				E07D3789950F71610CD279CE /* ToastView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		71650D77C8DA5002CAF97C3D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A2DB8B1750E3E98A139012D3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Telegrowl/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.telegrowl.Telegrowl;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		E4B89E4203A169C444908D5B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		FFB76804B1B217FC9B88491A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Telegrowl/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.telegrowl.Telegrowl;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D05A2D896558DEA0D0297ED2 /* Build configuration list for PBXNativeTarget "Telegrowl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A2DB8B1750E3E98A139012D3 /* Debug */,
+				FFB76804B1B217FC9B88491A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D3A3AF584B953DF074658F65 /* Build configuration list for PBXProject "Telegrowl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E4B89E4203A169C444908D5B /* Debug */,
+				71650D77C8DA5002CAF97C3D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		08DF40B61C23A0AA65293F1C /* XCRemoteSwiftPackageReference "TDLibKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Swiftgram/TDLibKit.git";
+			requirement = {
+				kind = exactVersion;
+				version = "1.5.2-tdlib-1.8.60-cb863c16";
+			};
+		};
+		B3205DABF6915A9211A25D10 /* XCRemoteSwiftPackageReference "swift-ogg" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/element-hq/swift-ogg.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.0.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B0E48CE4F84F397835ED9CB1 /* SwiftOGG */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B3205DABF6915A9211A25D10 /* XCRemoteSwiftPackageReference "swift-ogg" */;
+			productName = SwiftOGG;
+		};
+		BFFF8F7C5A24EEC6DEF14AEB /* TDLibKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 08DF40B61C23A0AA65293F1C /* XCRemoteSwiftPackageReference "TDLibKit" */;
+			productName = TDLibKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = B003445BD1474BF27C968D1F /* Project object */;
+}

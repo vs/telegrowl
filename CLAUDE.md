@@ -62,14 +62,15 @@ Services (Singletons, @MainActor):
 
 | Path | Purpose |
 |------|---------|
-| `Telegrowl/Services/TelegramService.swift` | TDLib client, auth states, chat/message management (465 lines) |
+| `Telegrowl/Services/TelegramService.swift` | TDLib client, auth states, chat/message management, photo downloads (482 lines) |
 | `Telegrowl/Services/AudioService.swift` | Recording, playback, silence detection (190 lines) |
 | `Telegrowl/Services/AudioConverter.swift` | OGG/Opus conversion, waveform generation (106 lines) |
 | `Telegrowl/Views/ContentView.swift` | Main UI coordinator (412 lines) |
 | `Telegrowl/Views/ConversationView.swift` | Message bubbles, voice playback (230 lines) |
-| `Telegrowl/Views/ChatListView.swift` | Chat list with search (177 lines) |
+| `Telegrowl/Views/AvatarView.swift` | Reusable avatar with photo download, minithumbnail blur, initials fallback (79 lines) |
+| `Telegrowl/Views/ChatListView.swift` | Chat list with search (147 lines) |
 | `Telegrowl/Views/AuthView.swift` | Phone → code → 2FA auth flow (150 lines) |
-| `Telegrowl/Views/SettingsView.swift` | App settings (339 lines) |
+| `Telegrowl/Views/SettingsView.swift` | App settings (325 lines) |
 | `Telegrowl/Views/RecordButton.swift` | Gesture-based recording button with animations (113 lines) |
 | `Telegrowl/App/Config.swift.template` | API credentials + UserDefaults-backed settings (copy to Config.swift) |
 
@@ -85,6 +86,8 @@ Services (Singletons, @MainActor):
 - `.newVoiceMessage` - triggers auto-play
 - `.voiceDownloaded` - file ready for playback
 - `.recordingAutoStopped` - silence detection triggered
+
+**User Avatars:** `AvatarView` displays real Telegram profile photos in the chat list and settings. Uses a `TelegramPhoto` protocol to unify `ChatPhotoInfo` and `ProfilePhoto`. Three-state fallback: downloaded photo → minithumbnail blur preview → colored initials circle. Downloads via `TelegramService.downloadPhoto(file:)`, relying on TDLib's built-in file cache.
 
 **Persistent Settings:** User preferences (auto-play, haptics, silence detection, durations, target chat) are backed by `UserDefaults` via computed properties on `Config`. Defaults are registered in `TelegrowlApp.init()` via `Config.registerDefaults()`. API credentials and TDLib paths remain compile-time constants.
 

@@ -13,6 +13,7 @@ class TelegramService: ObservableObject {
     static let shared = TelegramService()
 
     // MARK: - TDLib Client
+    private var manager: TDLibClientManager?
     private var api: TdApi?
     private var isDemoMode = false
 
@@ -56,20 +57,17 @@ class TelegramService: ObservableObject {
 
         createTDLibDirectories()
 
-        let client = TdClientImpl()
-        api = TdApi(client: client)
-
-        api?.client.run { [weak self] data in
-            guard let self = self, let api = self.api else { return }
+        manager = TDLibClientManager()
+        api = manager?.createClient(updateHandler: { [weak self] data, client in
             do {
-                let update = try api.decoder.decode(Update.self, from: data)
+                let update = try client.decoder.decode(Update.self, from: data)
                 Task { @MainActor in
-                    self.handleUpdate(update)
+                    self?.handleUpdate(update)
                 }
             } catch {
                 print("❌ Failed to decode update: \(error)")
             }
-        }
+        })
 
         print("📱 TDLib client created")
     }
@@ -135,6 +133,7 @@ class TelegramService: ObservableObject {
 
         case .authorizationStateClosed:
             api = nil
+            manager = nil
 
         default:
             break

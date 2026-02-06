@@ -67,7 +67,7 @@ struct ContentView: View {
                     conversationDestination(chatId: chatId)
                 }
                 .toolbar {
-                    ToolbarItem(placement: .topBarRight) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button(action: { isDrivingMode = true }) {
                             Image(systemName: "car.fill")
                                 .foregroundColor(TelegramTheme.accent)

@@ -3,7 +3,6 @@ import TDLibKit
 
 struct ChatListView: View {
     @EnvironmentObject var telegramService: TelegramService
-    @Binding var isDrivingMode: Bool
 
     @State private var searchText = ""
     @State private var showingSettings = false
@@ -50,12 +49,6 @@ struct ChatListView: View {
                             .font(.system(size: 24))
                             .foregroundColor(TelegramTheme.accent)
                     }
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(action: { isDrivingMode = true }) {
-                    Image(systemName: "car.fill")
-                        .foregroundColor(TelegramTheme.accent)
                 }
             }
         }
@@ -159,7 +152,7 @@ struct ChatRow: View {
 
 #Preview {
     NavigationStack {
-        ChatListView(isDrivingMode: .constant(false))
+        ChatListView()
             .environmentObject(TelegramService.shared)
     }
 }

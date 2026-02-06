@@ -333,7 +333,6 @@ class TelegramService: ObservableObject {
 
     func selectChat(_ chat: Chat) {
         selectedChat = chat
-        Config.targetChatId = chat.id
         messages = []
         loadMessages(chatId: chat.id)
     }

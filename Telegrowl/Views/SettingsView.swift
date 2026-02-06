@@ -4,7 +4,6 @@ struct SettingsView: View {
     @EnvironmentObject var telegramService: TelegramService
     @Environment(\.dismiss) var dismiss
 
-    @State private var targetUsername = Config.targetChatUsername
     @State private var autoPlay = Config.autoPlayResponses
     @State private var haptics = Config.hapticFeedback
     @State private var silenceDetection = Config.silenceDetection
@@ -17,7 +16,6 @@ struct SettingsView: View {
         NavigationView {
             Form {
                 accountSection
-                chatSection
                 audioSection
                 drivingSection
                 aboutSection
@@ -87,37 +85,6 @@ struct SettingsView: View {
             }
         } header: {
             Text("Account")
-        }
-    }
-
-    // MARK: - Chat Section
-
-    private var chatSection: some View {
-        Section {
-            if let chat = telegramService.selectedChat {
-                HStack {
-                    Text("Current Chat")
-                    Spacer()
-                    Text(chat.title)
-                        .foregroundColor(TelegramTheme.textSecondary)
-                }
-            }
-
-            HStack {
-                Text("Default Bot")
-                Spacer()
-                TextField("@username", text: $targetUsername)
-                    .multilineTextAlignment(.trailing)
-                    #if os(iOS)
-                    .textInputAutocapitalization(.never)
-                    #endif
-                    .autocorrectionDisabled()
-                    .foregroundColor(TelegramTheme.textSecondary)
-            }
-        } header: {
-            Text("Chat")
-        } footer: {
-            Text("Set the default chat for voice messages. You can always change it from the main screen.")
         }
     }
 
@@ -219,7 +186,6 @@ struct SettingsView: View {
     // MARK: - Save
 
     private func saveSettings() {
-        Config.targetChatUsername = targetUsername
         Config.autoPlayResponses = autoPlay
         Config.hapticFeedback = haptics
         Config.silenceDetection = silenceDetection

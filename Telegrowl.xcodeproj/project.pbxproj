@@ -155,6 +155,12 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					F467B25DB8E99761F36B9633 = {
+						DevelopmentTeam = WBQ2VU83JM;
+						ProvisioningStyle = Automatic;
+					};
+				};
 			};
 			buildConfigurationList = D3A3AF584B953DF074658F65 /* Build configuration list for PBXProject "Telegrowl" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -264,6 +270,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WBQ2VU83JM;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Telegrowl/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -345,6 +353,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WBQ2VU83JM;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Telegrowl/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

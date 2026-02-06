@@ -124,6 +124,10 @@ class AudioService: NSObject, ObservableObject {
     }
     
     private func checkSilence() {
+        guard Config.silenceDetection else { return }
+
+        // audioLevel is in dB (from averagePower): -160 = silence, 0 = max
+        // silenceThreshold is also in dB (e.g. -45.0)
         if audioLevel < Config.silenceThreshold {
             if silenceTimer == nil {
                 silenceTimer = Timer.scheduledTimer(withTimeInterval: Config.silenceDuration, repeats: false) { [weak self] _ in

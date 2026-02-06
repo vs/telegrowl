@@ -28,7 +28,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_FILE: Telegrowl/Resources/Info.plist
         GENERATE_INFOPLIST_FILE: false
-        DEVELOPMENT_TEAM: WBQ2VU83JM
+        DEVELOPMENT_TEAM: 5QCD38H4TU
         CODE_SIGN_STYLE: Automatic
     dependencies:
       - package: TDLibKit

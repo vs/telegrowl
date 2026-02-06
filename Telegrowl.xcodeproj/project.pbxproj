@@ -22,6 +22,7 @@
 		833FACDC1E7576DB356682A1 /* InputBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FFEB19B234BC8FB68EA4A6 /* InputBarView.swift */; };
 		86AFAA06F4AC3C239569858F /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD2A9FF4A2807B0FDC5DDFEC /* ConversationView.swift */; };
 		910B3D2F957C08AF1DA45184 /* TDLibKit in Frameworks */ = {isa = PBXBuildFile; productRef = BFFF8F7C5A24EEC6DEF14AEB /* TDLibKit */; };
+		AD06ECCA94224CC25FF71CA3 /* VoiceChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4558419F316C87CAF11CA47F /* VoiceChatService.swift */; };
 		B297ECA5BF7C0D816876B9C4 /* SwiftOGG in Frameworks */ = {isa = PBXBuildFile; productRef = B0E48CE4F84F397835ED9CB1 /* SwiftOGG */; };
 		DEC0237A8E2EA44464316531 /* AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A75191466C0D8A5D83F833 /* AudioService.swift */; };
 		E07D3789950F71610CD279CE /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FC20F08ECE62E6E0454EA01 /* ToastView.swift */; };
@@ -30,6 +31,7 @@
 /* Begin PBXFileReference section */
 		37493E4411FCCA57C9E8B462 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		41F3901E94199B49CA5F8DA9 /* BubbleShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleShape.swift; sourceTree = "<group>"; };
+		4558419F316C87CAF11CA47F /* VoiceChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceChatService.swift; sourceTree = "<group>"; };
 		53D54B8842268F1AEF17DF1F /* AudioConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConverter.swift; sourceTree = "<group>"; };
 		59AEA2D312F5AFA66B73A7C8 /* Telegrowl.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Telegrowl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D8B71203896E952930E85A1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -103,6 +105,7 @@
 				53D54B8842268F1AEF17DF1F /* AudioConverter.swift */,
 				D9A75191466C0D8A5D83F833 /* AudioService.swift */,
 				901242977C0E7792517A34D2 /* TelegramService.swift */,
+				4558419F316C87CAF11CA47F /* VoiceChatService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -215,6 +218,7 @@
 				3CBFAAAAA457172A091ACA21 /* TelegramTheme.swift in Sources */,
 				481E58A726410266B8A18B1C /* TelegrowlApp.swift in Sources */,
 				E07D3789950F71610CD279CE /* ToastView.swift in Sources */,
+				AD06ECCA94224CC25FF71CA3 /* VoiceChatService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

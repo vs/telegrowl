@@ -325,13 +325,14 @@ class TelegramService: ObservableObject {
         }
     }
 
-    func sendVoiceMessage(audioURL: URL, duration: Int, waveform: Data?) {
-        guard let chat = selectedChat else {
+    func sendVoiceMessage(audioURL: URL, duration: Int, waveform: Data?, chatId: Int64? = nil) {
+        let targetChatId = chatId ?? selectedChat?.id
+        guard let targetChatId else {
             print("❌ No chat selected")
             return
         }
 
-        print("📤 Sending voice message to chat \(chat.id)")
+        print("📤 Sending voice message to chat \(targetChatId)")
         print("   Duration: \(duration)s")
         print("   File: \(audioURL.lastPathComponent)")
 
@@ -349,7 +350,7 @@ class TelegramService: ObservableObject {
                 )
 
                 _ = try await api?.sendMessage(
-                    chatId: chat.id,
+                    chatId: targetChatId,
                     inputMessageContent: voiceNote,
                     options: nil,
                     replyMarkup: nil,

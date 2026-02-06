@@ -27,8 +27,15 @@ class AudioConverter {
             throw ConversionError.conversionFailed(error)
         }
 
+        // Verify the output file actually exists
+        guard FileManager.default.fileExists(atPath: outputURL.path) else {
+            print("❌ OGG file not found after conversion at: \(outputURL.path)")
+            throw ConversionError.inputFileNotFound
+        }
+
         let waveform = generateWaveform(from: inputURL)
-        return (outputURL, waveform)
+        // Return standardized URL to avoid /private prefix issues with TDLib's realpath()
+        return (outputURL.standardizedFileURL, waveform)
     }
 
     /// Generates Telegram-compatible waveform data (63 bytes, 5-bit values 0-31).

@@ -385,11 +385,17 @@ class TelegramService: ObservableObject {
             return
         }
 
+        // Resolve symlinks to get canonical path that TDLib's realpath() can find
+        let resolvedURL = audioURL.resolvingSymlinksInPath()
+        let filePath = resolvedURL.path
+
         print("📤 Sending voice message to chat \(targetChatId)")
         print("   Duration: \(duration)s")
         print("   File: \(audioURL.lastPathComponent)")
+        print("   Path: \(filePath)")
+        print("   Exists: \(FileManager.default.fileExists(atPath: filePath))")
 
-        let inputFile = InputFile.inputFileLocal(InputFileLocal(path: audioURL.path))
+        let inputFile = InputFile.inputFileLocal(InputFileLocal(path: filePath))
         let voiceNote = InputMessageContent.inputMessageVoiceNote(
             InputMessageVoiceNote(
                 caption: nil,
@@ -400,14 +406,20 @@ class TelegramService: ObservableObject {
             )
         )
 
-        _ = try await api?.sendMessage(
-            chatId: targetChatId,
-            inputMessageContent: voiceNote,
-            options: nil,
-            replyMarkup: nil,
-            replyTo: nil,
-            topicId: nil
-        )
+        do {
+            let result = try await api?.sendMessage(
+                chatId: targetChatId,
+                inputMessageContent: voiceNote,
+                options: nil,
+                replyMarkup: nil,
+                replyTo: nil,
+                topicId: nil
+            )
+            print("📤 sendMessage returned: id=\(result?.id ?? 0), sendingState=\(String(describing: result?.sendingState))")
+        } catch {
+            print("📤 sendMessage threw: \(error)")
+            throw error
+        }
 
         print("📤 Voice message sent")
     }

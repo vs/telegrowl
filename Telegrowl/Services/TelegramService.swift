@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Network
 import TDLibKit
 #if canImport(UIKit)
 import UIKit
@@ -36,6 +37,8 @@ class TelegramService: ObservableObject {
 
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
+    private let networkMonitor = NWPathMonitor()
+    private let networkMonitorQueue = DispatchQueue(label: "com.telegrowl.networkMonitor")
 
     // MARK: - Initialization
 
@@ -69,7 +72,56 @@ class TelegramService: ObservableObject {
             }
         })
 
-        print("📱 TDLib client created")
+        print("📱 TDLib client created, api=\(api != nil ? "ok" : "nil")")
+
+        // Reduce TDLib internal log noise (2=warnings, 4=debug)
+        Task {
+            #if DEBUG
+            try? await api?.setLogVerbosityLevel(newVerbosityLevel: 4)
+            #else
+            try? await api?.setLogVerbosityLevel(newVerbosityLevel: 2)
+            #endif
+        }
+
+        startNetworkMonitor()
+    }
+
+    // MARK: - Network Monitoring
+
+    /// TDLib on iOS doesn't auto-detect network availability.
+    /// We must inform it via setNetworkType when the network changes.
+    private func startNetworkMonitor() {
+        networkMonitor.pathUpdateHandler = { [weak self] path in
+            let networkType: NetworkType
+            if path.status == .satisfied {
+                if path.usesInterfaceType(.wifi) {
+                    networkType = .networkTypeWiFi
+                } else if path.usesInterfaceType(.cellular) {
+                    networkType = .networkTypeMobile
+                } else {
+                    networkType = .networkTypeOther
+                }
+            } else {
+                networkType = .networkTypeNone
+            }
+
+            print("📱 Network changed: \(networkType)")
+            Task { @MainActor in
+                self?.updateNetworkType(networkType)
+            }
+        }
+        networkMonitor.start(queue: networkMonitorQueue)
+    }
+
+    private func updateNetworkType(_ type: NetworkType) {
+        Task {
+            do {
+                try await api?.setNetworkType(type: type)
+                print("📱 TDLib network type set to: \(type)")
+            } catch {
+                print("❌ Failed to set network type: \(error)")
+            }
+        }
     }
 
     private func createTDLibDirectories() {
@@ -91,6 +143,7 @@ class TelegramService: ObservableObject {
             handleAuthState(state.authorizationState)
 
         case .updateConnectionState(let state):
+            print("📱 Connection state: \(state.state)")
             connectionState = state.state
 
         case .updateNewMessage(let update):

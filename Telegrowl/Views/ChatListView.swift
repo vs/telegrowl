@@ -3,77 +3,55 @@ import TDLibKit
 
 struct ChatListView: View {
     @EnvironmentObject var telegramService: TelegramService
-    @Environment(\.dismiss) var dismiss
-    
+
     @State private var searchText = ""
-    @State private var isSearching = false
-    
+    @State private var showingSettings = false
+
     var filteredChats: [Chat] {
         if searchText.isEmpty {
+            return telegramService.chats
+        }
+        // @username search
+        if searchText.hasPrefix("@") {
             return telegramService.chats
         }
         return telegramService.chats.filter { chat in
             chat.title.localizedCaseInsensitiveContains(searchText)
         }
     }
-    
+
     var body: some View {
-        NavigationView {
-            List {
-                // Search by username section
-                Section {
-                    HStack {
-                        TextField("@username", text: $searchText)
-                            #if os(iOS)
-                            .textInputAutocapitalization(.never)
-                            #endif
-                            .autocorrectionDisabled()
-                        
-                        if !searchText.isEmpty && searchText.hasPrefix("@") {
-                            Button("Search") {
-                                let username = String(searchText.dropFirst())
-                                telegramService.searchChat(username: username)
-                            }
-                            .buttonStyle(.bordered)
-                        }
-                    }
-                } header: {
-                    Text("Search by Username")
+        List {
+            ForEach(filteredChats, id: \.id) { chat in
+                NavigationLink(value: chat.id) {
+                    ChatRow(chat: chat)
                 }
-                
-                // Recent chats
-                Section {
-                    if filteredChats.isEmpty {
-                        Text("No chats found")
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(filteredChats, id: \.id) { chat in
-                            ChatRow(chat: chat)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    telegramService.selectChat(chat)
-                                    dismiss()
-                                }
-                        }
-                    }
-                } header: {
-                    Text("Recent Chats")
+                .listRowInsets(EdgeInsets(top: 0, leading: TelegramTheme.chatListAvatarInset, bottom: 0, trailing: 16))
+            }
+        }
+        .listStyle(.plain)
+        .searchable(text: $searchText, prompt: "Search")
+        .onSubmit(of: .search) {
+            if searchText.hasPrefix("@") {
+                let username = String(searchText.dropFirst())
+                telegramService.searchChat(username: username)
+            }
+        }
+        .navigationTitle("Chats")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeft) {
+                Button(action: { showingSettings = true }) {
+                    Image(systemName: "gear")
+                        .foregroundColor(TelegramTheme.accent)
                 }
             }
-            .navigationTitle("Select Chat")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-            }
-            .onAppear {
-                telegramService.loadChats()
-            }
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+        }
+        .onAppear {
+            telegramService.loadChats()
         }
     }
 }
@@ -85,46 +63,71 @@ struct ChatRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            chatAvatar
+            AvatarView(photo: chat.photo, title: chat.title, size: TelegramTheme.chatListAvatarSize)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
+                // Top line: title + timestamp
                 HStack {
                     Text(chat.title)
-                        .fontWeight(.medium)
+                        .font(TelegramTheme.titleFont)
+                        .foregroundColor(TelegramTheme.textPrimary)
+                        .lineLimit(1)
 
                     Spacer()
 
                     if let lastMessage = chat.lastMessage {
                         Text(formatTime(Date(timeIntervalSince1970: TimeInterval(lastMessage.date))))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(TelegramTheme.timestampFont)
+                            .foregroundColor(chat.unreadCount > 0 ? TelegramTheme.accent : TelegramTheme.timestamp)
                     }
                 }
 
+                // Bottom line: preview + unread badge
                 HStack {
+                    Text(messagePreview(for: chat))
+                        .font(TelegramTheme.previewFont)
+                        .foregroundColor(TelegramTheme.textSecondary)
+                        .lineLimit(1)
+
                     Spacer()
 
                     if chat.unreadCount > 0 {
                         Text("\(chat.unreadCount)")
-                            .font(.caption)
-                            .fontWeight(.bold)
+                            .font(TelegramTheme.badgeFont)
                             .foregroundColor(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.blue)
+                            .background(TelegramTheme.unreadBadge)
                             .clipShape(Capsule())
                     }
                 }
             }
         }
-        .padding(.vertical, 4)
+        .frame(height: TelegramTheme.chatListRowHeight - 8) // Account for cell padding
     }
-    
-    @ViewBuilder
-    private var chatAvatar: some View {
-        AvatarView(photo: chat.photo, title: chat.title, size: 50)
+
+    private func messagePreview(for chat: Chat) -> String {
+        guard let content = chat.lastMessage?.content else { return "" }
+        switch content {
+        case .messageText(let text):
+            return text.text.text
+        case .messageVoiceNote:
+            return "🎤 Voice message"
+        case .messagePhoto:
+            return "📷 Photo"
+        case .messageVideo:
+            return "📹 Video"
+        case .messageDocument:
+            return "📎 Document"
+        case .messageSticker(let sticker):
+            return "\(sticker.sticker.emoji) Sticker"
+        case .messageAnimation:
+            return "GIF"
+        default:
+            return "Message"
+        }
     }
-    
+
     private func formatTime(_ date: Foundation.Date) -> String {
         let calendar = Calendar.current
 
@@ -143,6 +146,8 @@ struct ChatRow: View {
 }
 
 #Preview {
-    ChatListView()
-        .environmentObject(TelegramService.shared)
+    NavigationStack {
+        ChatListView()
+            .environmentObject(TelegramService.shared)
+    }
 }

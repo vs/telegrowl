@@ -3,32 +3,23 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var telegramService: TelegramService
     @Environment(\.dismiss) var dismiss
-    
+
     @State private var targetUsername = Config.targetChatUsername
     @State private var autoPlay = Config.autoPlayResponses
     @State private var haptics = Config.hapticFeedback
     @State private var silenceDetection = Config.silenceDetection
     @State private var silenceDuration = Config.silenceDuration
     @State private var maxRecordingDuration = Config.maxRecordingDuration
-    
+
     @State private var showingLogoutConfirm = false
-    
+
     var body: some View {
         NavigationView {
             Form {
-                // Account
                 accountSection
-                
-                // Chat Settings
                 chatSection
-                
-                // Audio Settings
                 audioSection
-                
-                // Driving Mode
                 drivingSection
-                
-                // About
                 aboutSection
             }
             .navigationTitle("Settings")
@@ -51,11 +42,12 @@ struct SettingsView: View {
             } message: {
                 Text("You'll need to login again to use Telegrowl.")
             }
+            .tint(TelegramTheme.accent)
         }
     }
-    
+
     // MARK: - Account Section
-    
+
     private var accountSection: some View {
         Section {
             if telegramService.isAuthenticated {
@@ -70,36 +62,36 @@ struct SettingsView: View {
                             if let username = user.usernames?.activeUsernames.first {
                                 Text("@\(username)")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(TelegramTheme.textSecondary)
                             }
                         }
                     }
                 } else {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
+                            .foregroundColor(Color(hex: "4DA84B"))
                         Text("Connected to Telegram")
                     }
                 }
-                
+
                 Button("Logout", role: .destructive) {
                     showingLogoutConfirm = true
                 }
             } else {
                 HStack {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.red)
+                        .foregroundColor(TelegramTheme.recordingRed)
                     Text("Not connected")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(TelegramTheme.textSecondary)
                 }
             }
         } header: {
             Text("Account")
         }
     }
-    
+
     // MARK: - Chat Section
-    
+
     private var chatSection: some View {
         Section {
             if let chat = telegramService.selectedChat {
@@ -107,10 +99,10 @@ struct SettingsView: View {
                     Text("Current Chat")
                     Spacer()
                     Text(chat.title)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(TelegramTheme.textSecondary)
                 }
             }
-            
+
             HStack {
                 Text("Default Bot")
                 Spacer()
@@ -120,7 +112,7 @@ struct SettingsView: View {
                     .textInputAutocapitalization(.never)
                     #endif
                     .autocorrectionDisabled()
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TelegramTheme.textSecondary)
             }
         } header: {
             Text("Chat")
@@ -128,17 +120,17 @@ struct SettingsView: View {
             Text("Set the default chat for voice messages. You can always change it from the main screen.")
         }
     }
-    
+
     // MARK: - Audio Section
-    
+
     private var audioSection: some View {
         Section {
             Toggle("Auto-play Responses", isOn: $autoPlay)
-            
+
             Toggle("Haptic Feedback", isOn: $haptics)
-            
+
             Toggle("Silence Detection", isOn: $silenceDetection)
-            
+
             if silenceDetection {
                 HStack {
                     Text("Stop after silence")
@@ -153,7 +145,7 @@ struct SettingsView: View {
                     .frame(width: 180)
                 }
             }
-            
+
             HStack {
                 Text("Max Recording")
                 Spacer()
@@ -172,15 +164,15 @@ struct SettingsView: View {
             Text("Silence detection automatically stops recording when you stop talking.")
         }
     }
-    
+
     // MARK: - Driving Section
-    
+
     private var drivingSection: some View {
         Section {
             NavigationLink(destination: DrivingModeInfo()) {
                 Label("Driving Mode Tips", systemImage: "car.fill")
             }
-            
+
             NavigationLink(destination: SiriShortcutsInfo()) {
                 Label("Siri Shortcuts", systemImage: "waveform")
             }
@@ -190,42 +182,42 @@ struct SettingsView: View {
             Text("Tips for using Telegrowl while driving safely.")
         }
     }
-    
+
     // MARK: - About Section
-    
+
     private var aboutSection: some View {
         Section {
             HStack {
                 Text("Version")
                 Spacer()
                 Text("1.0.0 MVP")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TelegramTheme.textSecondary)
             }
-            
+
             Link(destination: URL(string: "https://github.com/vs/telegrowl")!) {
                 HStack {
                     Text("GitHub")
                     Spacer()
                     Image(systemName: "arrow.up.right")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(TelegramTheme.textSecondary)
                 }
             }
-            
+
             Link(destination: URL(string: "https://t.me/telegrowl")!) {
                 HStack {
                     Text("Telegram Channel")
                     Spacer()
                     Image(systemName: "arrow.up.right")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(TelegramTheme.textSecondary)
                 }
             }
         } header: {
             Text("About")
         }
     }
-    
+
     // MARK: - Save
-    
+
     private func saveSettings() {
         Config.targetChatUsername = targetUsername
         Config.autoPlayResponses = autoPlay
@@ -242,25 +234,25 @@ struct DrivingModeInfo: View {
     var body: some View {
         List {
             Section {
-                InfoRow(icon: "hand.tap", title: "Large Touch Target", 
+                InfoRow(icon: "hand.tap", title: "Large Touch Target",
                        description: "The record button is big and easy to tap without looking")
-                
+
                 InfoRow(icon: "speaker.wave.3.fill", title: "Auto-Play Responses",
                        description: "Voice responses play automatically through your car speakers")
-                
+
                 InfoRow(icon: "waveform", title: "Silence Detection",
                        description: "Recording stops automatically when you stop talking")
-                
+
                 InfoRow(icon: "airpods", title: "AirPods/CarPlay",
                        description: "Works with Bluetooth audio devices and CarPlay")
             }
-            
+
             Section {
-                Text("⚠️ Safety First")
+                Text("Safety First")
                     .fontWeight(.bold)
-                
+
                 Text("Only use Telegrowl when it's safe to do so. Pull over if you need to look at your phone.")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TelegramTheme.textSecondary)
             }
         }
         .navigationTitle("Driving Mode")
@@ -274,16 +266,16 @@ struct SiriShortcutsInfo: View {
         List {
             Section {
                 Text("Coming soon: Siri integration!")
-                    .foregroundColor(.secondary)
-                
+                    .foregroundColor(TelegramTheme.textSecondary)
+
                 Text("You'll be able to say \"Hey Siri, Telegrowl\" to start recording.")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TelegramTheme.textSecondary)
             }
-            
+
             Section {
                 InfoRow(icon: "mic.fill", title: "Voice Activation",
                        description: "Start recording with your voice")
-                
+
                 InfoRow(icon: "bell.fill", title: "Announce Messages",
                        description: "Siri can announce incoming messages")
             }
@@ -298,21 +290,21 @@ struct InfoRow: View {
     let icon: String
     let title: String
     let description: String
-    
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundColor(.blue)
+                .foregroundColor(TelegramTheme.accent)
                 .frame(width: 30)
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .fontWeight(.medium)
-                
+
                 Text(description)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TelegramTheme.textSecondary)
             }
         }
         .padding(.vertical, 4)

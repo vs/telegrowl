@@ -5,19 +5,28 @@ struct ConversationView: View {
     @EnvironmentObject var telegramService: TelegramService
     @EnvironmentObject var audioService: AudioService
 
-    @State private var scrollToBottom = false
+    let chatId: Int64
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(telegramService.messages, id: \.id) { message in
-                        MessageBubble(message: message)
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(telegramService.messages.enumerated()), id: \.element.id) { index, message in
+                        let nextMessage = index + 1 < telegramService.messages.count ? telegramService.messages[index + 1] : nil
+                        let prevMessage = index > 0 ? telegramService.messages[index - 1] : nil
+                        let hasTail = nextMessage == nil || nextMessage!.isOutgoing != message.isOutgoing
+                        let sameSenderAsPrev = prevMessage != nil && prevMessage!.isOutgoing == message.isOutgoing
+                        let spacing = sameSenderAsPrev ? TelegramTheme.interMessageSameSender : TelegramTheme.interMessageDifferentSender
+
+                        MessageBubble(message: message, hasTail: hasTail)
                             .id(message.id)
+                            .padding(.top, index == 0 ? 8 : spacing)
+                            .padding(.bottom, index == telegramService.messages.count - 1 ? 8 : 0)
                     }
                 }
-                .padding()
+                .padding(.horizontal, 8)
             }
+            .background(TelegramTheme.chatBackground)
             .onChange(of: telegramService.messages.count) { _, _ in
                 withAnimation {
                     if let lastMessage = telegramService.messages.last {
@@ -33,50 +42,32 @@ struct ConversationView: View {
 
 struct MessageBubble: View {
     let message: Message
+    let hasTail: Bool
     @EnvironmentObject var audioService: AudioService
 
     @State private var isPlaying = false
 
     var body: some View {
         HStack {
-            if message.isOutgoing {
-                Spacer(minLength: 60)
-            }
+            if message.isOutgoing { Spacer(minLength: 60) }
 
-            VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 4) {
-                contentView
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        message.isOutgoing
-                            ? Color.blue
-                            : Color(hex: "2a2a3e")
-                    )
-                    .cornerRadius(16)
+            bubbleContent
+                .background(
+                    BubbleShape(isOutgoing: message.isOutgoing, hasTail: hasTail)
+                        .fill(message.isOutgoing ? TelegramTheme.outgoingBubble : TelegramTheme.incomingBubble)
+                        .shadow(color: .black.opacity(message.isOutgoing ? 0 : 0.06), radius: 1, y: 1)
+                )
+                .frame(maxWidth: UIScreen.main.bounds.width * TelegramTheme.bubbleMaxWidthRatio, alignment: message.isOutgoing ? .trailing : .leading)
 
-                HStack(spacing: 4) {
-                    Text(formatTime(Date(timeIntervalSince1970: TimeInterval(message.date))))
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.5))
-
-                    if message.isOutgoing {
-                        sendingStateIcon
-                    }
-                }
-            }
-
-            if !message.isOutgoing {
-                Spacer(minLength: 60)
-            }
+            if !message.isOutgoing { Spacer(minLength: 60) }
         }
     }
 
     @ViewBuilder
-    private var contentView: some View {
+    private var bubbleContent: some View {
         switch message.content {
         case .messageText(let text):
-            Text(text.text.text)
-                .foregroundColor(.white)
+            textBubble(text.text.text)
 
         case .messageVoiceNote(let voiceContent):
             VoiceMessageView(
@@ -84,15 +75,62 @@ struct MessageBubble: View {
                 isPlaying: $isPlaying,
                 isOutgoing: message.isOutgoing
             )
+            .overlay(alignment: .bottomTrailing) {
+                timestampRow
+                    .padding(.trailing, 4)
+                    .padding(.bottom, 4)
+            }
+            .padding(.horizontal, TelegramTheme.bubblePaddingH)
+            .padding(.vertical, TelegramTheme.bubblePaddingV)
 
         case .messagePhoto:
-            Image(systemName: "photo")
-                .foregroundColor(.white)
+            HStack(spacing: 4) {
+                Image(systemName: "photo")
+                    .foregroundColor(TelegramTheme.textSecondary)
+                Text("Photo")
+                    .font(TelegramTheme.messageFont)
+                    .foregroundColor(TelegramTheme.textPrimary)
+            }
+            .overlay(alignment: .bottomTrailing) { timestampRow }
+            .padding(.horizontal, TelegramTheme.bubblePaddingH + 4)
+            .padding(.vertical, TelegramTheme.bubblePaddingV + 2)
 
         default:
             Text("[Unsupported message]")
-                .foregroundColor(.white.opacity(0.5))
+                .font(TelegramTheme.messageFont)
+                .foregroundColor(TelegramTheme.textSecondary)
                 .italic()
+                .padding(.horizontal, TelegramTheme.bubblePaddingH + 4)
+                .padding(.vertical, TelegramTheme.bubblePaddingV + 2)
+        }
+    }
+
+    private func textBubble(_ text: String) -> some View {
+        // Text + invisible timestamp spacer to ensure text wraps around the timestamp
+        HStack(alignment: .bottom, spacing: 0) {
+            Text(text)
+                .font(TelegramTheme.messageFont)
+                .foregroundColor(TelegramTheme.textPrimary)
+            + Text("  \(formatTime(Date(timeIntervalSince1970: TimeInterval(message.date))))\(message.isOutgoing ? " ✓✓" : "")")
+                .font(TelegramTheme.messageTimestampFont)
+                .foregroundColor(.clear) // Invisible spacer
+        }
+        .overlay(alignment: .bottomTrailing) {
+            timestampRow
+        }
+        .padding(.horizontal, TelegramTheme.bubblePaddingH + 4)
+        .padding(.vertical, TelegramTheme.bubblePaddingV + 2)
+    }
+
+    private var timestampRow: some View {
+        HStack(spacing: 2) {
+            Text(formatTime(Date(timeIntervalSince1970: TimeInterval(message.date))))
+                .font(TelegramTheme.messageTimestampFont)
+                .foregroundColor(message.isOutgoing ? TelegramTheme.outgoingTimestamp : TelegramTheme.incomingTimestamp)
+
+            if message.isOutgoing {
+                sendingStateIcon
+            }
         }
     }
 
@@ -102,17 +140,24 @@ struct MessageBubble: View {
             switch sendingState {
             case .messageSendingStatePending:
                 Image(systemName: "clock")
-                    .font(.caption2)
-                    .foregroundColor(.white.opacity(0.5))
+                    .font(.system(size: 10))
+                    .foregroundColor(TelegramTheme.checkSent)
             case .messageSendingStateFailed:
                 Image(systemName: "exclamationmark.circle")
-                    .font(.caption2)
-                    .foregroundColor(.red)
+                    .font(.system(size: 10))
+                    .foregroundColor(TelegramTheme.recordingRed)
             }
         } else {
+            // Sent / read indicator
             Image(systemName: "checkmark")
-                .font(.caption2)
-                .foregroundColor(.white.opacity(0.5))
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(TelegramTheme.checkRead)
+                .overlay(
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(TelegramTheme.checkRead)
+                        .offset(x: 4)
+                )
         }
     }
 
@@ -134,20 +179,28 @@ struct VoiceMessageView: View {
     @EnvironmentObject var telegramService: TelegramService
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
+            // Play button
             Button(action: togglePlayback) {
-                Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 36))
-                    .foregroundColor(.white)
+                ZStack {
+                    Circle()
+                        .fill(TelegramTheme.accent)
+                        .frame(width: TelegramTheme.playButtonSize, height: TelegramTheme.playButtonSize)
+
+                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white)
+                        .offset(x: isPlaying ? 0 : 1)
+                }
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                WaveformView(waveform: voiceNote.waveform, isPlaying: isPlaying)
-                    .frame(height: 24)
+                WaveformView(waveform: voiceNote.waveform, isPlaying: isPlaying, isOutgoing: isOutgoing)
+                    .frame(height: 20)
 
                 Text(formatDuration(voiceNote.duration))
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.7))
+                    .font(TelegramTheme.messageTimestampFont)
+                    .foregroundColor(isOutgoing ? TelegramTheme.outgoingTimestamp : TelegramTheme.incomingTimestamp)
             }
         }
         .frame(width: 200)
@@ -185,46 +238,37 @@ struct VoiceMessageView: View {
 struct WaveformView: View {
     let waveform: Data
     let isPlaying: Bool
+    let isOutgoing: Bool
 
     var body: some View {
         GeometryReader { geometry in
-            HStack(spacing: 2) {
-                ForEach(0..<30, id: \.self) { index in
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(Color.white.opacity(isPlaying ? 0.9 : 0.5))
-                        .frame(width: 3, height: getBarHeight(for: index, maxHeight: geometry.size.height))
-                        .animation(
-                            isPlaying
-                                ? .easeInOut(duration: 0.3).repeatForever().delay(Double(index) * 0.05)
-                                : .default,
-                            value: isPlaying
-                        )
+            HStack(spacing: TelegramTheme.waveformBarSpacing) {
+                ForEach(0..<TelegramTheme.waveformBarCount, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: TelegramTheme.waveformBarWidth / 2)
+                        .fill(isPlaying ? TelegramTheme.waveformActive : TelegramTheme.waveformInactive)
+                        .frame(width: TelegramTheme.waveformBarWidth, height: getBarHeight(for: index, maxHeight: geometry.size.height))
                 }
             }
+            .frame(maxHeight: .infinity, alignment: .center)
         }
     }
 
     private func getBarHeight(for index: Int, maxHeight: CGFloat) -> CGFloat {
-        // If we have waveform data, use it
         if index < waveform.count {
             let value = CGFloat(waveform[index]) / 255.0
-            return max(4, value * maxHeight)
+            return max(3, value * maxHeight)
         }
-
-        // Otherwise generate random-looking heights
+        // Fallback pattern
         let heights: [CGFloat] = [0.3, 0.5, 0.7, 0.4, 0.8, 0.6, 0.9, 0.5, 0.7, 0.4,
                                   0.6, 0.8, 0.5, 0.7, 0.9, 0.4, 0.6, 0.8, 0.5, 0.7,
-                                  0.4, 0.6, 0.8, 0.5, 0.7, 0.9, 0.4, 0.6, 0.5, 0.3]
-        return max(4, heights[index % heights.count] * maxHeight)
+                                  0.4, 0.6, 0.8, 0.5, 0.7, 0.9, 0.4, 0.6, 0.5, 0.3,
+                                  0.5, 0.7]
+        return max(3, heights[index % heights.count] * maxHeight)
     }
 }
 
 #Preview {
-    ZStack {
-        Color(hex: "1a1a2e").ignoresSafeArea()
-
-        ConversationView()
-            .environmentObject(TelegramService.shared)
-            .environmentObject(AudioService.shared)
-    }
+    ConversationView(chatId: 0)
+        .environmentObject(TelegramService.shared)
+        .environmentObject(AudioService.shared)
 }

@@ -339,23 +339,35 @@ struct ContentView: View {
             return
         }
 
-        Task {
+        // Capture chat ID before async gap to avoid sending to wrong chat
+        // if the user switches chats during conversion.
+        guard let chatId = telegramService.selectedChat?.id else {
+            print("❌ No chat selected")
+            return
+        }
+
+        let service = telegramService
+
+        // Run conversion off the main actor to avoid freezing UI.
+        Task.detached {
             do {
                 let (oggURL, waveform) = try await AudioConverter.convertToOpus(inputURL: m4aURL)
 
-                telegramService.sendVoiceMessage(
+                await service.sendVoiceMessage(
                     audioURL: oggURL,
                     duration: duration,
-                    waveform: waveform
+                    waveform: waveform,
+                    chatId: chatId
                 )
 
                 try? FileManager.default.removeItem(at: m4aURL)
             } catch {
                 print("❌ Conversion failed: \(error), sending M4A as fallback")
-                telegramService.sendVoiceMessage(
+                await service.sendVoiceMessage(
                     audioURL: m4aURL,
                     duration: duration,
-                    waveform: nil
+                    waveform: nil,
+                    chatId: chatId
                 )
             }
         }

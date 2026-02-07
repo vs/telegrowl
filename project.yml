@@ -1,0 +1,33 @@
+name: Telegrowl
+options:
+  bundleIdPrefix: com.telegrowl
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: false
+
+packages:
+  TDLibKit:
+    url: https://github.com/Swiftgram/TDLibKit.git
+    exactVersion: "1.5.2-tdlib-1.8.60-cb863c16"
+  SwiftOGG:
+    url: https://github.com/element-hq/swift-ogg.git
+    from: "0.0.3"
+
+targets:
+  Telegrowl:
+    type: application
+    platform: iOS
+    sources:
+      - path: Telegrowl
+        excludes:
+          - "**/*.template"
+    settings:
+      base:
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_FILE: Telegrowl/Resources/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+    dependencies:
+      - package: TDLibKit
+      - package: SwiftOGG

@@ -61,22 +61,8 @@ struct SettingsView: View {
             if telegramService.isAuthenticated {
                 if let user = telegramService.currentUser {
                     HStack {
-                        // Avatar
-                        ZStack {
-                            Circle()
-                                .fill(LinearGradient(
-                                    colors: [.blue, .purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ))
-                                .frame(width: 50, height: 50)
-                            
-                            Text(String(user.firstName.prefix(1)))
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                        }
-                        
+                        AvatarView(photo: user.profilePhoto, title: user.firstName, size: 50)
+
                         VStack(alignment: .leading) {
                             Text("\(user.firstName) \(user.lastName)".trimmingCharacters(in: .whitespaces))
                                 .fontWeight(.medium)

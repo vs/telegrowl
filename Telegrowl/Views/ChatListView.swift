@@ -122,36 +122,7 @@ struct ChatRow: View {
     
     @ViewBuilder
     private var chatAvatar: some View {
-        ZStack {
-            Circle()
-                .fill(avatarGradient)
-                .frame(width: 50, height: 50)
-            
-            Text(avatarInitials)
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
-        }
-    }
-    
-    private var avatarGradient: LinearGradient {
-        let colors: [Color] = [
-            .red, .orange, .yellow, .green, .blue, .purple, .pink
-        ]
-        let index = abs(chat.id.hashValue) % colors.count
-        return LinearGradient(
-            colors: [colors[index], colors[(index + 1) % colors.count]],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-    
-    private var avatarInitials: String {
-        let words = chat.title.split(separator: " ")
-        if words.count >= 2 {
-            return String(words[0].prefix(1) + words[1].prefix(1)).uppercased()
-        }
-        return String(chat.title.prefix(2)).uppercased()
+        AvatarView(photo: chat.photo, title: chat.title, size: 50)
     }
     
     private func formatTime(_ date: Foundation.Date) -> String {

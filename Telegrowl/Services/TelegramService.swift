@@ -401,6 +401,17 @@ class TelegramService: ObservableObject {
 
     // MARK: - File Downloads
 
+    func downloadPhoto(file: File) async throws -> File {
+        guard let api else { throw TelegramServiceError.notConnected }
+        return try await api.downloadFile(
+            fileId: file.id,
+            limit: 0,
+            offset: 0,
+            priority: 1,
+            synchronous: true
+        )
+    }
+
     func downloadVoice(_ voiceNote: VoiceNote, completion: @escaping (URL?) -> Void) {
         let fileId = voiceNote.voice.id
         print("📥 Downloading voice file: \(fileId)")
@@ -455,6 +466,12 @@ class TelegramService: ObservableObject {
         print("📱 Demo: Simulated login")
     }
     #endif
+}
+
+// MARK: - Errors
+
+enum TelegramServiceError: Error {
+    case notConnected
 }
 
 // MARK: - Notifications

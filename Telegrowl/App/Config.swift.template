@@ -19,15 +19,71 @@ struct Config {
         return documentsPath.appendingPathComponent("tdlib_files").path
     }
 
-    // MARK: - Chat Settings
-    static var targetChatId: Int64 = 0
-    static var targetChatUsername: String = ""
+    // MARK: - UserDefaults Keys
+    private enum Keys {
+        static let targetChatId = "targetChatId"
+        static let targetChatUsername = "targetChatUsername"
+        static let autoPlayResponses = "autoPlayResponses"
+        static let hapticFeedback = "hapticFeedback"
+        static let silenceDetection = "silenceDetection"
+        static let silenceDuration = "silenceDuration"
+        static let silenceThreshold = "silenceThreshold"
+        static let maxRecordingDuration = "maxRecordingDuration"
+    }
 
-    // MARK: - Audio Settings
-    static var autoPlayResponses: Bool = true
-    static var hapticFeedback: Bool = true
-    static var silenceDetection: Bool = true
-    static var silenceDuration: TimeInterval = 2.0
-    static var silenceThreshold: Float = 0.01
-    static var maxRecordingDuration: TimeInterval = 60.0
+    private static let defaults = UserDefaults.standard
+
+    /// Register default values (call once at app startup)
+    static func registerDefaults() {
+        defaults.register(defaults: [
+            Keys.autoPlayResponses: true,
+            Keys.hapticFeedback: true,
+            Keys.silenceDetection: true,
+            Keys.silenceDuration: 2.0,
+            Keys.silenceThreshold: 0.01,
+            Keys.maxRecordingDuration: 60.0,
+        ])
+    }
+
+    // MARK: - Chat Settings (Persistent)
+    static var targetChatId: Int64 {
+        get { Int64(defaults.integer(forKey: Keys.targetChatId)) }
+        set { defaults.set(Int(newValue), forKey: Keys.targetChatId) }
+    }
+
+    static var targetChatUsername: String {
+        get { defaults.string(forKey: Keys.targetChatUsername) ?? "" }
+        set { defaults.set(newValue, forKey: Keys.targetChatUsername) }
+    }
+
+    // MARK: - Audio Settings (Persistent)
+    static var autoPlayResponses: Bool {
+        get { defaults.bool(forKey: Keys.autoPlayResponses) }
+        set { defaults.set(newValue, forKey: Keys.autoPlayResponses) }
+    }
+
+    static var hapticFeedback: Bool {
+        get { defaults.bool(forKey: Keys.hapticFeedback) }
+        set { defaults.set(newValue, forKey: Keys.hapticFeedback) }
+    }
+
+    static var silenceDetection: Bool {
+        get { defaults.bool(forKey: Keys.silenceDetection) }
+        set { defaults.set(newValue, forKey: Keys.silenceDetection) }
+    }
+
+    static var silenceDuration: TimeInterval {
+        get { defaults.double(forKey: Keys.silenceDuration) }
+        set { defaults.set(newValue, forKey: Keys.silenceDuration) }
+    }
+
+    static var silenceThreshold: Float {
+        get { defaults.float(forKey: Keys.silenceThreshold) }
+        set { defaults.set(newValue, forKey: Keys.silenceThreshold) }
+    }
+
+    static var maxRecordingDuration: TimeInterval {
+        get { defaults.double(forKey: Keys.maxRecordingDuration) }
+        set { defaults.set(newValue, forKey: Keys.maxRecordingDuration) }
+    }
 }

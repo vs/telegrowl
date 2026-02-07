@@ -4,6 +4,10 @@ import SwiftUI
 struct TelegrowlApp: App {
     @StateObject private var telegramService = TelegramService.shared
     @StateObject private var audioService = AudioService.shared
+
+    init() {
+        Config.registerDefaults()
+    }
     
     var body: some Scene {
         WindowGroup {

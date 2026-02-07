@@ -71,7 +71,7 @@ Services (Singletons, @MainActor):
 | `Telegrowl/Views/AuthView.swift` | Phone → code → 2FA auth flow (150 lines) |
 | `Telegrowl/Views/SettingsView.swift` | App settings (339 lines) |
 | `Telegrowl/Views/RecordButton.swift` | Gesture-based recording button with animations (113 lines) |
-| `Telegrowl/App/Config.swift.template` | API credentials template (copy to Config.swift) |
+| `Telegrowl/App/Config.swift.template` | API credentials + UserDefaults-backed settings (copy to Config.swift) |
 
 ## Implementation Notes
 
@@ -85,6 +85,8 @@ Services (Singletons, @MainActor):
 - `.newVoiceMessage` - triggers auto-play
 - `.voiceDownloaded` - file ready for playback
 - `.recordingAutoStopped` - silence detection triggered
+
+**Persistent Settings:** User preferences (auto-play, haptics, silence detection, durations, target chat) are backed by `UserDefaults` via computed properties on `Config`. Defaults are registered in `TelegrowlApp.init()` via `Config.registerDefaults()`. API credentials and TDLib paths remain compile-time constants.
 
 **Debug Logging:** Uses print() with emoji prefixes (📱 Telegram, 🎙️ Audio, 🔄 Conversion, 📤 Send, 📥 Download, ❌ Error)
 

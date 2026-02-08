@@ -40,7 +40,7 @@ struct ChatListView: View {
         .navigationTitle("Chats")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
-            ToolbarItem(placement: .topBarLeft) {
+            ToolbarItem(placement: .topBarLeading) {
                 Button(action: { showingSettings = true }) {
                     Image(systemName: "gear")
                         .foregroundColor(TelegramTheme.accent)

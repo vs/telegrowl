@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1DE546CE0C62CB93AD2027C4 /* TelegramService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901242977C0E7792517A34D2 /* TelegramService.swift */; };
+		24010F831B01829D3EACD770 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8503B655E47DA3A3BD366E5E /* Config.swift */; };
 		281F6E3FD2EEB04D2EB1A49C /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A5A94D35F564CEC75465CF /* AvatarView.swift */; };
 		2FFD1FB6B646F0E9A40742D6 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8323551A5274A7BE3EEEDE9 /* ChatListView.swift */; };
 		3B832CF75ED6251C12DA7323 /* BubbleShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F3901E94199B49CA5F8DA9 /* BubbleShape.swift */; };
@@ -32,6 +33,7 @@
 		53D54B8842268F1AEF17DF1F /* AudioConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConverter.swift; sourceTree = "<group>"; };
 		59AEA2D312F5AFA66B73A7C8 /* Telegrowl.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Telegrowl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D8B71203896E952930E85A1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8503B655E47DA3A3BD366E5E /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		8526112B82EA468C3BF748CF /* RecordButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordButton.swift; sourceTree = "<group>"; };
 		8769073548C0A187A242438B /* TelegramTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramTheme.swift; sourceTree = "<group>"; };
 		901242977C0E7792517A34D2 /* TelegramService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramService.swift; sourceTree = "<group>"; };
@@ -81,6 +83,7 @@
 		1EF8A8B6E3CC0D126C735809 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				8503B655E47DA3A3BD366E5E /* Config.swift */,
 				9DBA4DC0E031735AAE4DE080 /* TelegrowlApp.swift */,
 			);
 			path = App;
@@ -202,6 +205,7 @@
 				281F6E3FD2EEB04D2EB1A49C /* AvatarView.swift in Sources */,
 				3B832CF75ED6251C12DA7323 /* BubbleShape.swift in Sources */,
 				2FFD1FB6B646F0E9A40742D6 /* ChatListView.swift in Sources */,
+				24010F831B01829D3EACD770 /* Config.swift in Sources */,
 				7FC04AA31DC2950F6E59FFAB /* ContentView.swift in Sources */,
 				86AFAA06F4AC3C239569858F /* ConversationView.swift in Sources */,
 				833FACDC1E7576DB356682A1 /* InputBarView.swift in Sources */,

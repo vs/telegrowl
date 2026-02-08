@@ -10,6 +10,10 @@ struct SettingsView: View {
     @State private var silenceDuration = Config.silenceDuration
     @State private var maxRecordingDuration = Config.maxRecordingDuration
 
+    @State private var vadSensitivity = Config.vadSensitivity
+    @State private var muteCommand = Config.muteCommand
+    @State private var unmuteCommand = Config.unmuteCommand
+
     @State private var showingLogoutConfirm = false
 
     var body: some View {
@@ -17,7 +21,7 @@ struct SettingsView: View {
             Form {
                 accountSection
                 audioSection
-                drivingSection
+                voiceChatSection
                 aboutSection
             }
             .navigationTitle("Settings")
@@ -132,21 +136,49 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Driving Section
+    // MARK: - Voice Chat Section
 
-    private var drivingSection: some View {
+    private var voiceChatSection: some View {
         Section {
-            NavigationLink(destination: DrivingModeInfo()) {
-                Label("Driving Mode Tips", systemImage: "car.fill")
+            HStack {
+                Text("VAD Sensitivity")
+                Spacer()
+                Picker("", selection: $vadSensitivity) {
+                    Text("Low").tag(0)
+                    Text("Medium").tag(1)
+                    Text("High").tag(2)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 180)
             }
 
-            NavigationLink(destination: SiriShortcutsInfo()) {
-                Label("Siri Shortcuts", systemImage: "waveform")
+            HStack {
+                Text("Mute Command")
+                Spacer()
+                TextField("mute", text: $muteCommand)
+                    .multilineTextAlignment(.trailing)
+                    .autocorrectionDisabled()
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
+                    .foregroundColor(TelegramTheme.textSecondary)
+            }
+
+            HStack {
+                Text("Unmute Command")
+                Spacer()
+                TextField("unmute", text: $unmuteCommand)
+                    .multilineTextAlignment(.trailing)
+                    .autocorrectionDisabled()
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
+                    .foregroundColor(TelegramTheme.textSecondary)
             }
         } header: {
-            Text("Hands-Free")
+            Text("Voice Chat")
         } footer: {
-            Text("Tips for using Telegrowl while driving safely.")
+            Text("Voice commands to control mute/unmute during voice chat. VAD sensitivity controls how loud you need to speak to trigger recording.")
         }
     }
 
@@ -191,62 +223,9 @@ struct SettingsView: View {
         Config.silenceDetection = silenceDetection
         Config.silenceDuration = silenceDuration
         Config.maxRecordingDuration = maxRecordingDuration
-    }
-}
-
-// MARK: - Driving Mode Info
-
-struct DrivingModeInfo: View {
-    var body: some View {
-        List {
-            Section {
-                InfoRow(icon: "hand.tap", title: "Large Touch Target",
-                       description: "The record button is big and easy to tap without looking")
-
-                InfoRow(icon: "speaker.wave.3.fill", title: "Auto-Play Responses",
-                       description: "Voice responses play automatically through your car speakers")
-
-                InfoRow(icon: "waveform", title: "Silence Detection",
-                       description: "Recording stops automatically when you stop talking")
-
-                InfoRow(icon: "airpods", title: "AirPods/CarPlay",
-                       description: "Works with Bluetooth audio devices and CarPlay")
-            }
-
-            Section {
-                Text("Safety First")
-                    .fontWeight(.bold)
-
-                Text("Only use Telegrowl when it's safe to do so. Pull over if you need to look at your phone.")
-                    .foregroundColor(TelegramTheme.textSecondary)
-            }
-        }
-        .navigationTitle("Driving Mode")
-    }
-}
-
-// MARK: - Siri Shortcuts Info
-
-struct SiriShortcutsInfo: View {
-    var body: some View {
-        List {
-            Section {
-                Text("Coming soon: Siri integration!")
-                    .foregroundColor(TelegramTheme.textSecondary)
-
-                Text("You'll be able to say \"Hey Siri, Telegrowl\" to start recording.")
-                    .foregroundColor(TelegramTheme.textSecondary)
-            }
-
-            Section {
-                InfoRow(icon: "mic.fill", title: "Voice Activation",
-                       description: "Start recording with your voice")
-
-                InfoRow(icon: "bell.fill", title: "Announce Messages",
-                       description: "Siri can announce incoming messages")
-            }
-        }
-        .navigationTitle("Siri Shortcuts")
+        Config.vadSensitivity = vadSensitivity
+        Config.muteCommand = muteCommand
+        Config.unmuteCommand = unmuteCommand
     }
 }
 

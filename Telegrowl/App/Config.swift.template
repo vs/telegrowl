@@ -40,7 +40,7 @@ struct Config {
             Keys.hapticFeedback: true,
             Keys.silenceDetection: true,
             Keys.silenceDuration: 2.0,
-            Keys.silenceThreshold: 0.01,
+            Keys.silenceThreshold: -45.0,
             Keys.maxRecordingDuration: 60.0,
         ])
     }

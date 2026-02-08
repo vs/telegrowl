@@ -8,15 +8,17 @@
 
 /* Begin PBXBuildFile section */
 		1DE546CE0C62CB93AD2027C4 /* TelegramService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901242977C0E7792517A34D2 /* TelegramService.swift */; };
-		24010F831B01829D3EACD770 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8503B655E47DA3A3BD366E5E /* Config.swift */; };
 		281F6E3FD2EEB04D2EB1A49C /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A5A94D35F564CEC75465CF /* AvatarView.swift */; };
 		2FFD1FB6B646F0E9A40742D6 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8323551A5274A7BE3EEEDE9 /* ChatListView.swift */; };
+		3B832CF75ED6251C12DA7323 /* BubbleShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F3901E94199B49CA5F8DA9 /* BubbleShape.swift */; };
+		3CBFAAAAA457172A091ACA21 /* TelegramTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8769073548C0A187A242438B /* TelegramTheme.swift */; };
 		481E58A726410266B8A18B1C /* TelegrowlApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DBA4DC0E031735AAE4DE080 /* TelegrowlApp.swift */; };
 		5DED95F13437E8326743321F /* AudioConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53D54B8842268F1AEF17DF1F /* AudioConverter.swift */; };
 		729D5E8E19AC73F17FE2CF57 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDD19CCEA19643EB97AF41B /* SettingsView.swift */; };
 		79F676128CBD520DF8C450BD /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B187BC3D21B6B451F12DE301 /* AuthView.swift */; };
 		7EEEBCC22863F69383ED6A9E /* RecordButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8526112B82EA468C3BF748CF /* RecordButton.swift */; };
 		7FC04AA31DC2950F6E59FFAB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37493E4411FCCA57C9E8B462 /* ContentView.swift */; };
+		833FACDC1E7576DB356682A1 /* InputBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FFEB19B234BC8FB68EA4A6 /* InputBarView.swift */; };
 		86AFAA06F4AC3C239569858F /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD2A9FF4A2807B0FDC5DDFEC /* ConversationView.swift */; };
 		910B3D2F957C08AF1DA45184 /* TDLibKit in Frameworks */ = {isa = PBXBuildFile; productRef = BFFF8F7C5A24EEC6DEF14AEB /* TDLibKit */; };
 		B297ECA5BF7C0D816876B9C4 /* SwiftOGG in Frameworks */ = {isa = PBXBuildFile; productRef = B0E48CE4F84F397835ED9CB1 /* SwiftOGG */; };
@@ -26,14 +28,16 @@
 
 /* Begin PBXFileReference section */
 		37493E4411FCCA57C9E8B462 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		41F3901E94199B49CA5F8DA9 /* BubbleShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleShape.swift; sourceTree = "<group>"; };
 		53D54B8842268F1AEF17DF1F /* AudioConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConverter.swift; sourceTree = "<group>"; };
 		59AEA2D312F5AFA66B73A7C8 /* Telegrowl.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Telegrowl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D8B71203896E952930E85A1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		8503B655E47DA3A3BD366E5E /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		8526112B82EA468C3BF748CF /* RecordButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordButton.swift; sourceTree = "<group>"; };
+		8769073548C0A187A242438B /* TelegramTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramTheme.swift; sourceTree = "<group>"; };
 		901242977C0E7792517A34D2 /* TelegramService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramService.swift; sourceTree = "<group>"; };
 		9DBA4DC0E031735AAE4DE080 /* TelegrowlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegrowlApp.swift; sourceTree = "<group>"; };
 		9FC20F08ECE62E6E0454EA01 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
+		B0FFEB19B234BC8FB68EA4A6 /* InputBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputBarView.swift; sourceTree = "<group>"; };
 		B187BC3D21B6B451F12DE301 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		B8323551A5274A7BE3EEEDE9 /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
 		BD2A9FF4A2807B0FDC5DDFEC /* ConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationView.swift; sourceTree = "<group>"; };
@@ -77,7 +81,6 @@
 		1EF8A8B6E3CC0D126C735809 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				8503B655E47DA3A3BD366E5E /* Config.swift */,
 				9DBA4DC0E031735AAE4DE080 /* TelegrowlApp.swift */,
 			);
 			path = App;
@@ -114,11 +117,14 @@
 			children = (
 				B187BC3D21B6B451F12DE301 /* AuthView.swift */,
 				D1A5A94D35F564CEC75465CF /* AvatarView.swift */,
+				41F3901E94199B49CA5F8DA9 /* BubbleShape.swift */,
 				B8323551A5274A7BE3EEEDE9 /* ChatListView.swift */,
 				37493E4411FCCA57C9E8B462 /* ContentView.swift */,
 				BD2A9FF4A2807B0FDC5DDFEC /* ConversationView.swift */,
+				B0FFEB19B234BC8FB68EA4A6 /* InputBarView.swift */,
 				8526112B82EA468C3BF748CF /* RecordButton.swift */,
 				FEDD19CCEA19643EB97AF41B /* SettingsView.swift */,
+				8769073548C0A187A242438B /* TelegramTheme.swift */,
 				9FC20F08ECE62E6E0454EA01 /* ToastView.swift */,
 			);
 			path = Views;
@@ -194,13 +200,15 @@
 				DEC0237A8E2EA44464316531 /* AudioService.swift in Sources */,
 				79F676128CBD520DF8C450BD /* AuthView.swift in Sources */,
 				281F6E3FD2EEB04D2EB1A49C /* AvatarView.swift in Sources */,
+				3B832CF75ED6251C12DA7323 /* BubbleShape.swift in Sources */,
 				2FFD1FB6B646F0E9A40742D6 /* ChatListView.swift in Sources */,
-				24010F831B01829D3EACD770 /* Config.swift in Sources */,
 				7FC04AA31DC2950F6E59FFAB /* ContentView.swift in Sources */,
 				86AFAA06F4AC3C239569858F /* ConversationView.swift in Sources */,
+				833FACDC1E7576DB356682A1 /* InputBarView.swift in Sources */,
 				7EEEBCC22863F69383ED6A9E /* RecordButton.swift in Sources */,
 				729D5E8E19AC73F17FE2CF57 /* SettingsView.swift in Sources */,
 				1DE546CE0C62CB93AD2027C4 /* TelegramService.swift in Sources */,
+				3CBFAAAAA457172A091ACA21 /* TelegramTheme.swift in Sources */,
 				481E58A726410266B8A18B1C /* TelegrowlApp.swift in Sources */,
 				E07D3789950F71610CD279CE /* ToastView.swift in Sources */,
 			);

@@ -60,12 +60,12 @@ struct AvatarView: View {
     }
 
     private var avatarGradient: LinearGradient {
-        let colors: [Color] = [.red, .orange, .yellow, .green, .blue, .purple, .pink]
-        let index = abs(title.hashValue) % colors.count
+        let index = abs(title.hashValue) % TelegramTheme.avatarColors.count
+        let colors = TelegramTheme.avatarColors[index]
         return LinearGradient(
-            colors: [colors[index], colors[(index + 1) % colors.count]],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
+            colors: [colors.0, colors.1],
+            startPoint: .top,
+            endPoint: .bottom
         )
     }
 

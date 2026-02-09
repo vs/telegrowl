@@ -2,7 +2,6 @@ import SwiftUI
 
 struct VoiceChatView: View {
     @StateObject private var voiceChatService = VoiceChatService()
-    @EnvironmentObject var telegramService: TelegramService
     @Environment(\.dismiss) var dismiss
 
     let chatId: Int64

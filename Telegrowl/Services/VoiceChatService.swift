@@ -35,7 +35,6 @@ class VoiceChatService: ObservableObject {
 
     private var chatId: Int64 = 0
     private let audioEngine = AVAudioEngine()
-    private var recordingFile: AVAudioFile?
     private var recordingURL: URL?
     private var recordingStartTime: Foundation.Date?
     private var silenceStartTime: Foundation.Date?
@@ -45,6 +44,10 @@ class VoiceChatService: ObservableObject {
     private var playbackCancellable: AnyCancellable?
     private var notificationCancellable: AnyCancellable?
     private var interruptionCancellable: AnyCancellable?
+    private var maxDurationTimer: Timer?
+
+    // Audio file for recording — accessed from audio thread, so nonisolated(unsafe)
+    private nonisolated(unsafe) var audioFile: AVAudioFile?
 
     // MARK: - Speech Recognition
     private var speechRecognizer: SFSpeechRecognizer?
@@ -170,8 +173,19 @@ class VoiceChatService: ObservableObject {
     // MARK: - VAD & Buffer Processing
 
     /// Called on the audio thread for every buffer from the input tap.
+    /// All audio I/O (recording writes) happens here to avoid buffer reuse races.
     private nonisolated func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
+        // Feed speech recognizer synchronously on audio thread (append is thread-safe)
         recognitionRequest?.append(buffer)
+
+        // Write to recording file synchronously on audio thread (before buffer is reused)
+        if let file = audioFile {
+            do {
+                try file.write(from: buffer)
+            } catch {
+                print("❌ VoiceChat: failed to write buffer: \(error)")
+            }
+        }
 
         guard let channelData = buffer.floatChannelData?[0] else { return }
         let frameCount = Int(buffer.frameLength)
@@ -190,32 +204,28 @@ class VoiceChatService: ObservableObject {
         let silenceDuration = Config.silenceDuration
         let isVoice = db > threshold
 
-        // Bounce to main actor for state changes and recording
+        // Bounce only computed values to main actor for state changes
         Task { @MainActor [weak self] in
             guard let self else { return }
             self.audioLevel = db
-            self.handleVAD(isVoice: isVoice, buffer: buffer, silenceDuration: silenceDuration)
+            self.handleVAD(isVoice: isVoice, silenceDuration: silenceDuration)
         }
     }
 
     /// Main actor VAD state machine. Decides transitions between listening/recording/playing.
-    private func handleVAD(isVoice: Bool, buffer: AVAudioPCMBuffer, silenceDuration: TimeInterval) {
+    private func handleVAD(isVoice: Bool, silenceDuration: TimeInterval) {
         switch state {
         case .listening:
             if isVoice && !isMuted {
-                startRecording(initialBuffer: buffer)
+                startRecording()
             }
 
         case .recording:
             if isMuted {
-                // Muted while recording — discard
                 discardRecording()
                 state = .listening
                 return
             }
-
-            // Write buffer to file
-            writeBuffer(buffer)
 
             if isVoice {
                 silenceStartTime = nil
@@ -231,12 +241,11 @@ class VoiceChatService: ObservableObject {
 
         case .playing:
             if isVoice && !isMuted {
-                // User interrupts playback — stop and start recording
                 print("🎙️ VoiceChat: playback interrupted by voice")
                 AudioService.shared.stopPlayback()
                 playbackCancellable?.cancel()
                 playbackCancellable = nil
-                startRecording(initialBuffer: buffer)
+                startRecording()
             }
 
         case .idle, .processing:
@@ -246,41 +255,39 @@ class VoiceChatService: ObservableObject {
 
     // MARK: - Recording
 
-    private func startRecording(initialBuffer: AVAudioPCMBuffer) {
+    private func startRecording() {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let filename = "vc_\(Int(Foundation.Date().timeIntervalSince1970)).m4a"
         let url = documentsPath.appendingPathComponent(filename)
 
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: initialBuffer.format.sampleRate,
+            AVSampleRateKey: sampleRate,
             AVNumberOfChannelsKey: 1,
             AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
         ]
 
         do {
-            recordingFile = try AVAudioFile(forWriting: url, settings: settings)
+            // audioFile is nonisolated(unsafe) — set it here on MainActor,
+            // processAudioBuffer reads it on the audio thread to write buffers.
+            audioFile = try AVAudioFile(forWriting: url, settings: settings)
             recordingURL = url
             recordingStartTime = Foundation.Date()
             silenceStartTime = nil
             state = .recording
 
-            // Write the initial buffer that triggered VAD
-            writeBuffer(initialBuffer)
+            // Start max duration timer
+            let maxDuration = Config.maxRecordingDuration
+            maxDurationTimer = Timer.scheduledTimer(withTimeInterval: maxDuration, repeats: false) { [weak self] _ in
+                Task { @MainActor in
+                    self?.finishRecording()
+                }
+            }
 
             haptic(.medium)
             print("🎙️ VoiceChat: recording started -> \(filename)")
         } catch {
             print("❌ VoiceChat: failed to create recording file: \(error)")
-        }
-    }
-
-    private func writeBuffer(_ buffer: AVAudioPCMBuffer) {
-        guard let file = recordingFile else { return }
-        do {
-            try file.write(from: buffer)
-        } catch {
-            print("❌ VoiceChat: failed to write buffer: \(error)")
         }
     }
 
@@ -292,10 +299,12 @@ class VoiceChatService: ObservableObject {
         }
 
         let duration = Foundation.Date().timeIntervalSince(startTime)
-        recordingFile = nil
+        audioFile = nil
         recordingURL = nil
         recordingStartTime = nil
         silenceStartTime = nil
+        maxDurationTimer?.invalidate()
+        maxDurationTimer = nil
 
         // Check minimum duration
         if duration < Config.minRecordingDuration {
@@ -311,6 +320,7 @@ class VoiceChatService: ObservableObject {
 
         // Send pipeline
         let durationInt = Int(ceil(duration))
+        let targetChatId = self.chatId
         Task.detached { [weak self] in
             do {
                 let (oggURL, waveform) = try await AudioConverter.convertToOpus(inputURL: url)
@@ -320,7 +330,7 @@ class VoiceChatService: ObservableObject {
                     audioURL: oggURL,
                     duration: durationInt,
                     waveform: waveform,
-                    chatId: self?.chatId
+                    chatId: targetChatId
                 )
                 print("📤 VoiceChat: sent successfully")
 
@@ -345,10 +355,12 @@ class VoiceChatService: ObservableObject {
 
     private func discardRecording() {
         if let url = recordingURL {
-            recordingFile = nil
+            audioFile = nil
             recordingURL = nil
             recordingStartTime = nil
             silenceStartTime = nil
+            maxDurationTimer?.invalidate()
+            maxDurationTimer = nil
             deleteFile(at: url)
             print("🎙️ VoiceChat: recording discarded")
         }
@@ -363,30 +375,31 @@ class VoiceChatService: ObservableObject {
     private func observeAudioInterruptions() {
         interruptionCancellable = NotificationCenter.default
             .publisher(for: AVAudioSession.interruptionNotification)
-            .receive(on: DispatchQueue.main)
             .sink { [weak self] notification in
-                guard let self else { return }
-                guard let info = notification.userInfo,
-                      let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
-                      let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    guard let info = notification.userInfo,
+                          let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+                          let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
 
-                switch type {
-                case .began:
-                    print("🎧 VoiceChat: audio interruption began")
-                    if self.state == .recording {
-                        self.discardRecording()
+                    switch type {
+                    case .began:
+                        print("🎧 VoiceChat: audio interruption began")
+                        if self.state == .recording {
+                            self.discardRecording()
+                        }
+                        self.stopEngine()
+                        self.stopSpeechRecognition()
+                        self.isMuted = true
+                        self.state = .idle
+
+                    case .ended:
+                        print("🎧 VoiceChat: audio interruption ended")
+                        // Stay muted — user taps unmute to resume
+
+                    @unknown default:
+                        break
                     }
-                    self.stopEngine()
-                    self.stopSpeechRecognition()
-                    self.isMuted = true
-                    self.state = .idle
-
-                case .ended:
-                    print("🎧 VoiceChat: audio interruption ended")
-                    // Stay muted — user taps unmute to resume
-
-                @unknown default:
-                    break
                 }
             }
     }
@@ -394,9 +407,10 @@ class VoiceChatService: ObservableObject {
     private func observeIncomingMessages() {
         notificationCancellable = NotificationCenter.default
             .publisher(for: .newVoiceMessage)
-            .receive(on: DispatchQueue.main)
             .sink { [weak self] notification in
-                self?.handleIncomingVoice(notification)
+                Task { @MainActor [weak self] in
+                    self?.handleIncomingVoice(notification)
+                }
             }
     }
 
@@ -452,11 +466,12 @@ class VoiceChatService: ObservableObject {
                     .dropFirst()
                     .filter { !$0 }
                     .first()
-                    .receive(on: DispatchQueue.main)
                     .sink { [weak self] _ in
-                        guard let self else { return }
-                        print("🔊 VoiceChat: playback finished")
-                        self.playNext()
+                        Task { @MainActor [weak self] in
+                            guard let self else { return }
+                            print("🔊 VoiceChat: playback finished")
+                            self.playNext()
+                        }
                     }
             } else {
                 print("❌ VoiceChat: download failed, skipping")

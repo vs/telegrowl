@@ -216,10 +216,12 @@ class VoiceChatService: ObservableObject {
             if isVoice {
                 silenceStartTime = nil
             } else {
-                if silenceStartTime == nil {
+                if let silenceStart = silenceStartTime {
+                    if Foundation.Date().timeIntervalSince(silenceStart) >= silenceDuration {
+                        finishRecording()
+                    }
+                } else {
                     silenceStartTime = Foundation.Date()
-                } else if Foundation.Date().timeIntervalSince(silenceStartTime!) >= silenceDuration {
-                    finishRecording()
                 }
             }
 

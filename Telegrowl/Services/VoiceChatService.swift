@@ -23,13 +23,23 @@ enum VoiceChatState: Equatable {
 /// VAD-based recording, send pipeline, and incoming message playback queue.
 /// NOT a singleton — created per voice chat session by VoiceChatView.
 @MainActor
-class VoiceChatService: ObservableObject {
+class VoiceChatService: NSObject, ObservableObject {
 
     // MARK: - Published Properties
 
     @Published var state: VoiceChatState = .idle
     @Published var isMuted: Bool = false
     @Published var audioLevel: Float = -160.0
+
+    /// Action callback for commands that require navigation (close, switch chat).
+    var onAction: ((VoiceCommandAction) -> Void)?
+
+    // Cross-chat announcements
+    private var crossChatAnnouncement: (chatId: Int64, chatTitle: String, message: Message)?
+    private var crossChatWindowTimer: Timer?
+    private var crossChatCancellable: AnyCancellable?
+    private let synthesizer = AVSpeechSynthesizer()
+    private var ttsCompletion: (() -> Void)?
 
     // MARK: - Private Properties
 
@@ -72,6 +82,7 @@ class VoiceChatService: ObservableObject {
         observeIncomingMessages()
         startSpeechRecognition()
         observeAudioInterruptions()
+        observeCrossChatMessages()
 
         state = .listening
         haptic(.medium)
@@ -92,6 +103,12 @@ class VoiceChatService: ObservableObject {
         interruptionCancellable = nil
         AudioService.shared.stopPlayback()
         stopSpeechRecognition()
+        crossChatCancellable?.cancel()
+        crossChatCancellable = nil
+        crossChatWindowTimer?.invalidate()
+        crossChatWindowTimer = nil
+        crossChatAnnouncement = nil
+        synthesizer.stopSpeaking(at: .immediate)
 
         state = .idle
     }
@@ -216,6 +233,12 @@ class VoiceChatService: ObservableObject {
     private func handleVAD(isVoice: Bool, silenceDuration: TimeInterval) {
         switch state {
         case .listening:
+            // Announce cross-chat messages during silence
+            if crossChatAnnouncement != nil && !isMuted {
+                announceCrossChat()
+                return
+            }
+
             if isVoice && !isMuted {
                 startRecording()
             }
@@ -502,24 +525,35 @@ class VoiceChatService: ObservableObject {
                 let text = result.bestTranscription.formattedString.lowercased()
                 let muteCmd = Config.muteCommand.lowercased()
                 let unmuteCmd = Config.unmuteCommand.lowercased()
+                let closeCmd = Config.closeCommand.lowercased()
+                let chatPrefix = Config.chatWithPrefix.lowercased()
+                let playCmd = Config.playCommand.lowercased()
+                let chatCmd = Config.chatCommand.lowercased()
 
                 // Check unmute first (since "unmute" contains "mute")
                 if text.hasSuffix(unmuteCmd) && self.isMuted {
-                    Task { @MainActor in
-                        self.unmute()
-                    }
+                    Task { @MainActor in self.unmute() }
                 } else if text.hasSuffix(muteCmd) && !self.isMuted {
-                    Task { @MainActor in
-                        self.mute()
+                    Task { @MainActor in self.mute() }
+                } else if text.hasSuffix(closeCmd) {
+                    Task { @MainActor in self.handleCloseCommand() }
+                } else if let range = text.range(of: chatPrefix, options: .backwards) {
+                    let nameQuery = String(text[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+                    if !nameQuery.isEmpty {
+                        Task { @MainActor in self.handleSwitchChatCommand(nameQuery: nameQuery) }
+                    }
+                } else if self.crossChatAnnouncement != nil {
+                    if text.hasSuffix(chatCmd) {
+                        Task { @MainActor in self.handleCrossChatCommand() }
+                    } else if text.hasSuffix(playCmd) {
+                        Task { @MainActor in self.handleCrossChatPlay() }
                     }
                 }
             }
 
             if let error {
                 print("⚠️ VoiceChat: speech recognition error: \(error)")
-                Task { @MainActor in
-                    self.restartSpeechRecognition()
-                }
+                Task { @MainActor in self.restartSpeechRecognition() }
             }
         }
 
@@ -547,6 +581,121 @@ class VoiceChatService: ObservableObject {
     private func restartSpeechRecognition() {
         stopSpeechRecognition()
         startSpeechRecognition()
+    }
+
+    // MARK: - Voice Command Handlers
+
+    private func handleCloseCommand() {
+        print("🎧 VoiceChat: close command received")
+        discardRecording()
+        stop()
+        onAction?(.closeChat)
+    }
+
+    private func handleSwitchChatCommand(nameQuery: String) {
+        let chats = TelegramService.shared.chats
+        let aliases = Config.voiceAliases
+
+        // Alias first
+        for (chatId, alias) in aliases {
+            if alias.lowercased() == nameQuery.lowercased() {
+                if let chat = chats.first(where: { $0.id == chatId }) {
+                    print("🎧 VoiceChat: switching to \(chat.title) (via alias)")
+                    discardRecording()
+                    stop()
+                    onAction?(.switchChat(chatId: chat.id, chatTitle: chat.title))
+                    return
+                }
+            }
+        }
+
+        // Chat title substring
+        for chat in chats {
+            if chat.title.lowercased().contains(nameQuery.lowercased()) {
+                print("🎧 VoiceChat: switching to \(chat.title)")
+                discardRecording()
+                stop()
+                onAction?(.switchChat(chatId: chat.id, chatTitle: chat.title))
+                return
+            }
+        }
+
+        print("🎧 VoiceChat: contact not found for \"\(nameQuery)\"")
+    }
+
+    // MARK: - Cross-Chat Announcements
+
+    private func observeCrossChatMessages() {
+        guard Config.announceCrossChat else { return }
+
+        crossChatCancellable = NotificationCenter.default
+            .publisher(for: .newIncomingMessage)
+            .sink { [weak self] notification in
+                Task { @MainActor [weak self] in
+                    self?.handleCrossChatMessage(notification)
+                }
+            }
+    }
+
+    private func handleCrossChatMessage(_ notification: Foundation.Notification) {
+        guard let message = notification.object as? Message,
+              !message.isOutgoing,
+              message.chatId != chatId else { return }
+
+        guard let chat = TelegramService.shared.chats.first(where: { $0.id == message.chatId }) else { return }
+        let displayName = Config.voiceAlias(for: message.chatId) ?? chat.title
+
+        crossChatAnnouncement = (chatId: message.chatId, chatTitle: displayName, message: message)
+        print("🎧 VoiceChat: cross-chat message from \(displayName), waiting for silence to announce")
+    }
+
+    private func announceCrossChat() {
+        guard let announcement = crossChatAnnouncement else { return }
+
+        stopEngine()
+        stopSpeechRecognition()
+
+        let utterance = AVSpeechUtterance(string: "Message from \(announcement.chatTitle)")
+        utterance.voice = AVSpeechSynthesisVoice(language: Config.speechLocale)
+
+        ttsCompletion = { [weak self] in
+            guard let self else { return }
+            self.setupAudioSession()
+            self.startEngine()
+            self.startSpeechRecognition()
+
+            self.crossChatWindowTimer = Timer.scheduledTimer(withTimeInterval: Config.announcementWindow, repeats: false) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.crossChatAnnouncement = nil
+                    self?.crossChatWindowTimer = nil
+                }
+            }
+        }
+
+        synthesizer.delegate = self
+        synthesizer.speak(utterance)
+    }
+
+    private func handleCrossChatCommand() {
+        guard let announcement = crossChatAnnouncement else { return }
+        crossChatWindowTimer?.invalidate()
+        crossChatWindowTimer = nil
+        crossChatAnnouncement = nil
+
+        print("🎧 VoiceChat: switching to cross-chat \(announcement.chatTitle)")
+        discardRecording()
+        stop()
+        onAction?(.switchChat(chatId: announcement.chatId, chatTitle: announcement.chatTitle))
+    }
+
+    private func handleCrossChatPlay() {
+        guard let announcement = crossChatAnnouncement else { return }
+        crossChatWindowTimer?.invalidate()
+        crossChatWindowTimer = nil
+        crossChatAnnouncement = nil
+
+        print("🎧 VoiceChat: playing cross-chat message from \(announcement.chatTitle)")
+        onAction?(.playMessage(message: announcement.message, chatTitle: announcement.chatTitle))
     }
 
     // MARK: - Permissions
@@ -580,5 +729,16 @@ class VoiceChatService: ObservableObject {
     deinit {
         // Engine cleanup happens on stop(), but ensure tap is removed
         // Note: deinit runs on whatever thread — just nil out references
+    }
+}
+
+// MARK: - AVSpeechSynthesizerDelegate
+
+extension VoiceChatService: AVSpeechSynthesizerDelegate {
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        Task { @MainActor in
+            self.ttsCompletion?()
+            self.ttsCompletion = nil
+        }
     }
 }

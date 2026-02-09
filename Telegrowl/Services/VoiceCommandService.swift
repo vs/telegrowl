@@ -88,6 +88,9 @@ class VoiceCommandService: NSObject, ObservableObject {
     // Track whether we were listening before backgrounding
     private var wasListeningBeforeBackground = false
 
+    // Prevents error-handler restarts during TTS
+    private var isSpeakingTTS = false
+
     // MARK: - Initialization
 
     private override init() {
@@ -457,6 +460,7 @@ class VoiceCommandService: NSObject, ObservableObject {
 
     private func speak(_ text: String, completion: (() -> Void)? = nil) {
         // Stop listening while speaking to avoid mic feedback
+        isSpeakingTTS = true
         stopEngine()
         stopSpeechRecognition()
 
@@ -471,11 +475,15 @@ class VoiceCommandService: NSObject, ObservableObject {
     }
 
     private func onTTSFinished() {
+        isSpeakingTTS = false
         let completion = ttsCompletion
         ttsCompletion = nil
 
-        // Resume listening after TTS
+        // Resume listening after TTS — reset silence detection state
         if state != .idle && state != .transitioning {
+            isSpeaking = false
+            silenceStart = Foundation.Date()
+            speechStart = nil
             setupAudioSession()
             startEngine()
             startSpeechRecognition()
@@ -487,6 +495,10 @@ class VoiceCommandService: NSObject, ObservableObject {
     // MARK: - Speech Recognition
 
     private func startSpeechRecognition() {
+        // Reset transcription state for fresh session
+        lastTranscription = ""
+        transcriptionAtSpeechStart = ""
+
         let locale = Locale(identifier: Config.speechLocale)
         speechRecognizer = SFSpeechRecognizer(locale: locale)
         guard let speechRecognizer, speechRecognizer.isAvailable else {
@@ -513,6 +525,8 @@ class VoiceCommandService: NSObject, ObservableObject {
             if let error {
                 print("⚠️ VoiceCommand: speech recognition error: \(error)")
                 Task { @MainActor in
+                    // Don't restart during TTS — onTTSFinished will handle it
+                    guard !self.isSpeakingTTS else { return }
                     self.restartSpeechRecognition()
                 }
             }

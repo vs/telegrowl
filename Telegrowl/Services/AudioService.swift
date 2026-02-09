@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import Combine
+import SwiftOGG
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -148,13 +149,31 @@ class AudioService: NSObject, ObservableObject {
     // MARK: - Playback
     
     func play(url: URL) {
+        // AVAudioPlayer doesn't support OGG container — convert to M4A first
+        let ext = url.pathExtension.lowercased()
+        var playableURL = url
+        if ext == "oga" || ext == "ogg" {
+            let m4aURL = url.deletingPathExtension().appendingPathExtension("m4a")
+            if FileManager.default.fileExists(atPath: m4aURL.path) {
+                playableURL = m4aURL
+            } else {
+                do {
+                    try OGGConverter.convertOpusOGGToM4aFile(src: url, dest: m4aURL)
+                    playableURL = m4aURL
+                    print("🔊 Converted OGG→M4A for playback")
+                } catch {
+                    print("❌ OGG→M4A conversion failed: \(error)")
+                    return
+                }
+            }
+        }
+
         do {
-            audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer = try AVAudioPlayer(contentsOf: playableURL)
             audioPlayer?.delegate = self
             audioPlayer?.play()
             isPlaying = true
-            
-            print("🔊 Playing: \(url.lastPathComponent)")
+            print("🔊 Playing: \(playableURL.lastPathComponent)")
         } catch {
             print("❌ Playback failed: \(error)")
         }

@@ -44,6 +44,7 @@ class VoiceChatService: ObservableObject {
     private var incomingQueue: [VoiceNote] = []
     private var playbackCancellable: AnyCancellable?
     private var notificationCancellable: AnyCancellable?
+    private var interruptionCancellable: AnyCancellable?
 
     // MARK: - Speech Recognition
     private var speechRecognizer: SFSpeechRecognizer?
@@ -67,6 +68,7 @@ class VoiceChatService: ObservableObject {
         startEngine()
         observeIncomingMessages()
         startSpeechRecognition()
+        observeAudioInterruptions()
 
         state = .listening
         haptic(.medium)
@@ -83,6 +85,8 @@ class VoiceChatService: ObservableObject {
         playbackCancellable = nil
         notificationCancellable?.cancel()
         notificationCancellable = nil
+        interruptionCancellable?.cancel()
+        interruptionCancellable = nil
         AudioService.shared.stopPlayback()
         stopSpeechRecognition()
 
@@ -355,6 +359,37 @@ class VoiceChatService: ObservableObject {
     }
 
     // MARK: - Incoming Message Queue
+
+    private func observeAudioInterruptions() {
+        interruptionCancellable = NotificationCenter.default
+            .publisher(for: AVAudioSession.interruptionNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                guard let self else { return }
+                guard let info = notification.userInfo,
+                      let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+                      let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+                switch type {
+                case .began:
+                    print("🎧 VoiceChat: audio interruption began")
+                    if self.state == .recording {
+                        self.discardRecording()
+                    }
+                    self.stopEngine()
+                    self.stopSpeechRecognition()
+                    self.isMuted = true
+                    self.state = .idle
+
+                case .ended:
+                    print("🎧 VoiceChat: audio interruption ended")
+                    // Stay muted — user taps unmute to resume
+
+                @unknown default:
+                    break
+                }
+            }
+    }
 
     private func observeIncomingMessages() {
         notificationCancellable = NotificationCenter.default

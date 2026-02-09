@@ -62,7 +62,7 @@ struct ContentView: View {
 
     private var navigationView: some View {
         NavigationStack(path: $navigationPath) {
-            ChatListView(isDrivingMode: $isDrivingMode)
+            ChatListView()
                 .navigationDestination(for: Int64.self) { chatId in
                     conversationDestination(chatId: chatId)
                 }
@@ -101,6 +101,12 @@ struct ContentView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 chatToolbarTitle
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: { isDrivingMode = true }) {
+                    Image(systemName: "car.fill")
+                        .foregroundColor(TelegramTheme.accent)
+                }
             }
         }
     }

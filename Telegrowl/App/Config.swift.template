@@ -21,8 +21,6 @@ struct Config {
 
     // MARK: - UserDefaults Keys
     private enum Keys {
-        static let targetChatId = "targetChatId"
-        static let targetChatUsername = "targetChatUsername"
         static let autoPlayResponses = "autoPlayResponses"
         static let hapticFeedback = "hapticFeedback"
         static let silenceDetection = "silenceDetection"
@@ -43,17 +41,6 @@ struct Config {
             Keys.silenceThreshold: -45.0,
             Keys.maxRecordingDuration: 60.0,
         ])
-    }
-
-    // MARK: - Chat Settings (Persistent)
-    static var targetChatId: Int64 {
-        get { Int64(defaults.integer(forKey: Keys.targetChatId)) }
-        set { defaults.set(Int(newValue), forKey: Keys.targetChatId) }
-    }
-
-    static var targetChatUsername: String {
-        get { defaults.string(forKey: Keys.targetChatUsername) ?? "" }
-        set { defaults.set(newValue, forKey: Keys.targetChatUsername) }
     }
 
     // MARK: - Audio Settings (Persistent)

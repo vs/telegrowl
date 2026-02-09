@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Telegrowl is a hands-free Telegram voice client for iOS, designed for drivers. It enables voice-based communication with Telegram AI bots through a one-tap recording interface and a hands-free voice chat mode. The app uses SwiftUI with iOS 17+ and TDLibKit for Telegram integration.
 
-**Current Status:** TDLib integration complete, OGG/Opus encoding implemented, voice chat mode implemented. Needs real-device testing.
+**Current Status:** TDLib integration complete, OGG/Opus encoding implemented, voice chat mode implemented, global voice control implemented. Needs real-device testing.
 
 ## Build & Run
 
@@ -50,7 +50,8 @@ TelegrowlApp (Entry)
 Services (Singletons, @MainActor):
     ├── TelegramService - TDLib client, auth state machine, chat/message management
     ├── AudioService - M4A recording, playback, silence detection, haptics
-    └── AudioConverter - M4A→OGG/Opus conversion, waveform generation, temp file cleanup
+    ├── AudioConverter - M4A→OGG/Opus conversion, waveform generation, temp file cleanup
+    └── VoiceCommandService - Global voice commands, TTS announcements, announcement queue
 
 Per-Session (@MainActor, NOT singleton):
     └── VoiceChatService - AVAudioEngine VAD, speech recognition, recording, message queue
@@ -83,6 +84,7 @@ Per-Session (@MainActor, NOT singleton):
 | `Telegrowl/Services/AudioService.swift` | Recording, playback, silence detection |
 | `Telegrowl/Services/AudioConverter.swift` | OGG/Opus conversion, waveform generation |
 | `Telegrowl/Services/VoiceChatService.swift` | Voice chat: AVAudioEngine VAD, speech recognition, state machine, message queue |
+| `Telegrowl/Services/VoiceCommandService.swift` | Global voice commands: silence-bounded detection, TTS, announcement queue |
 | `Telegrowl/Views/ContentView.swift` | Main UI coordinator, toast overlay, send flow |
 | `Telegrowl/Views/VoiceChatView.swift` | Full-screen voice chat UI with state visuals and mute button |
 | `Telegrowl/Views/ConversationView.swift` | Message bubbles, voice playback |
@@ -90,7 +92,7 @@ Per-Session (@MainActor, NOT singleton):
 | `Telegrowl/Views/AvatarView.swift` | Reusable avatar with photo download, minithumbnail blur, initials fallback |
 | `Telegrowl/Views/ChatListView.swift` | Chat list with search |
 | `Telegrowl/Views/AuthView.swift` | Phone → code → 2FA auth flow |
-| `Telegrowl/Views/SettingsView.swift` | App settings (audio, voice chat, account) |
+| `Telegrowl/Views/SettingsView.swift` | App settings (audio, voice chat, voice control, account) |
 | `Telegrowl/Views/RecordButton.swift` | Gesture-based recording button with animations |
 | `Telegrowl/App/Config.swift.template` | API credentials + UserDefaults-backed settings (copy to Config.swift) |
 
@@ -112,8 +114,33 @@ Per-Session (@MainActor, NOT singleton):
 - Max recording duration enforced via Timer
 - Audio interruptions auto-mute; user must manually unmute to resume
 
+**Voice Command Service (Global Voice Control):**
+- Singleton `@MainActor` service, runs from app launch after auth + permissions
+- States: `idle`, `listening`, `paused`, `announcing`, `awaitingResponse`, `transitioning`
+- Silence-bounded command detection: speech surrounded by ≥0.75s silence = command candidate
+- SFSpeechRecognizer (continuous, 50s rolling restart) + keyword matching on transcribed text
+- AVSpeechSynthesizer for TTS announcements ("Message from {name}", "Starting chat with {name}")
+- Announcement queue: incoming messages deduplicated per chatId, processed sequentially with 5s response window
+- Contact matching: voice aliases first (exact, case-insensitive), then chat titles (substring)
+- Service handoff: VoiceCommandService stops engine → ContentView navigates → VoiceChatService starts (one mic owner)
+- Pauses engine during TTS to avoid mic picking up speaker; resumes via AVSpeechSynthesizerDelegate
+- Auto-pauses on app background, restarts on foreground
+- `onAction` callback communicates with ContentView for navigation (openChat, switchChat, closeChat, playMessage, exitApp)
+
+**VoiceChatService Extended Commands:**
+- Beyond mute/unmute: "close" (back to contacts), "chat with {name}" (switch chat)
+- Cross-chat announcements: announces messages from other chats during silence gaps (configurable)
+- 5s response window for "play" (read/play message) and "chat" (switch to announced contact)
+- Discards unsent recording when switching chats
+
+**Voice Aliases:**
+- `Config.voiceAliases: [Int64: String]` — UserDefaults-backed, serialized as `[String: String]`
+- Long-press context menu on ChatListView rows: Set/Edit/Clear alias
+- Aliases shown as gray italic subtitle on chat rows
+
 **Notifications for Inter-Component Communication:**
 - `.newVoiceMessage` - triggers auto-play (or queues in voice chat)
+- `.newIncomingMessage` - any incoming message (voice or text), used by VoiceCommandService for announcements
 - `.voiceDownloaded` - file ready for playback
 - `.recordingAutoStopped` - silence detection triggered
 

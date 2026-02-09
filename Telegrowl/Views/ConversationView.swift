@@ -83,6 +83,20 @@ struct MessageBubble: View {
             .padding(.horizontal, TelegramTheme.bubblePaddingH)
             .padding(.vertical, TelegramTheme.bubblePaddingV)
 
+        case .messageAudio(let audioContent):
+            AudioMessageView(
+                audio: audioContent.audio,
+                caption: audioContent.caption,
+                isOutgoing: message.isOutgoing
+            )
+            .overlay(alignment: .bottomTrailing) {
+                timestampRow
+                    .padding(.trailing, 4)
+                    .padding(.bottom, 4)
+            }
+            .padding(.horizontal, TelegramTheme.bubblePaddingH)
+            .padding(.vertical, TelegramTheme.bubblePaddingV)
+
         case .messagePhoto:
             HStack(spacing: 4) {
                 Image(systemName: "photo")
@@ -90,6 +104,26 @@ struct MessageBubble: View {
                 Text("Photo")
                     .font(TelegramTheme.messageFont)
                     .foregroundColor(TelegramTheme.textPrimary)
+            }
+            .overlay(alignment: .bottomTrailing) { timestampRow }
+            .padding(.horizontal, TelegramTheme.bubblePaddingH + 4)
+            .padding(.vertical, TelegramTheme.bubblePaddingV + 2)
+
+        case .messageDocument(let docContent):
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.fill")
+                        .foregroundColor(TelegramTheme.accent)
+                    Text(docContent.document.fileName)
+                        .font(TelegramTheme.messageFont)
+                        .foregroundColor(TelegramTheme.textPrimary)
+                        .lineLimit(1)
+                }
+                if !docContent.caption.text.isEmpty {
+                    Text(docContent.caption.text)
+                        .font(TelegramTheme.messageFont)
+                        .foregroundColor(TelegramTheme.textPrimary)
+                }
             }
             .overlay(alignment: .bottomTrailing) { timestampRow }
             .padding(.horizontal, TelegramTheme.bubblePaddingH + 4)
@@ -264,6 +298,90 @@ struct WaveformView: View {
                                   0.4, 0.6, 0.8, 0.5, 0.7, 0.9, 0.4, 0.6, 0.5, 0.3,
                                   0.5, 0.7]
         return max(3, heights[index % heights.count] * maxHeight)
+    }
+}
+
+// MARK: - Audio Message View
+
+struct AudioMessageView: View {
+    let audio: Audio
+    let caption: FormattedText
+    let isOutgoing: Bool
+
+    @EnvironmentObject var audioService: AudioService
+    @EnvironmentObject var telegramService: TelegramService
+    @State private var isPlaying = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 10) {
+                Button(action: togglePlayback) {
+                    ZStack {
+                        Circle()
+                            .fill(TelegramTheme.accent)
+                            .frame(width: TelegramTheme.playButtonSize, height: TelegramTheme.playButtonSize)
+                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white)
+                            .offset(x: isPlaying ? 0 : 1)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(displayTitle)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(TelegramTheme.textPrimary)
+                        .lineLimit(1)
+                    Text(formatDuration(audio.duration))
+                        .font(TelegramTheme.messageTimestampFont)
+                        .foregroundColor(isOutgoing ? TelegramTheme.outgoingTimestamp : TelegramTheme.incomingTimestamp)
+                }
+            }
+            .frame(width: 200, alignment: .leading)
+
+            if !caption.text.isEmpty {
+                Text(caption.text)
+                    .font(TelegramTheme.messageFont)
+                    .foregroundColor(TelegramTheme.textPrimary)
+            }
+        }
+    }
+
+    private var displayTitle: String {
+        if !audio.title.isEmpty { return audio.title }
+        if !audio.fileName.isEmpty { return audio.fileName }
+        return "Audio"
+    }
+
+    private func togglePlayback() {
+        if isPlaying {
+            audioService.stopPlayback()
+            isPlaying = false
+        } else {
+            let localPath = audio.audio.local.path
+            if !localPath.isEmpty {
+                audioService.play(url: URL(fileURLWithPath: localPath))
+                isPlaying = true
+            } else {
+                Task {
+                    do {
+                        let file = try await telegramService.downloadPhoto(file: audio.audio)
+                        if !file.local.path.isEmpty {
+                            audioService.play(url: URL(fileURLWithPath: file.local.path))
+                            isPlaying = true
+                        }
+                    } catch {
+                        print("❌ Audio download failed: \(error)")
+                    }
+                }
+            }
+        }
+    }
+
+    private func formatDuration(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let secs = seconds % 60
+        return String(format: "%d:%02d", minutes, secs)
     }
 }
 

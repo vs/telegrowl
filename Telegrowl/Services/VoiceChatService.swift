@@ -357,9 +357,9 @@ class VoiceChatService: NSObject, ObservableObject {
                 )
                 print("📤 VoiceChat: sent successfully")
 
-                // Cleanup temp files
+                // Only delete the M4A source. Keep the OGG — TDLib reads it
+                // asynchronously for upload. Deleting it early causes send failures.
                 try? FileManager.default.removeItem(at: url)
-                try? FileManager.default.removeItem(at: oggURL)
             } catch {
                 print("❌ VoiceChat: send pipeline failed: \(error)")
             }

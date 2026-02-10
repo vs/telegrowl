@@ -152,6 +152,12 @@ class TelegramService: ObservableObject {
         case .updateMessageContent(let update):
             handleMessageContentUpdate(messageId: update.messageId, chatId: update.chatId, content: update.newContent)
 
+        case .updateMessageSendSucceeded(let update):
+            handleMessageSendSucceeded(oldMessageId: update.oldMessageId, message: update.message)
+
+        case .updateMessageSendFailed(let update):
+            handleMessageSendFailed(oldMessageId: update.oldMessageId, message: update.message, errorMessage: update.error.message)
+
         case .updateFile(let update):
             handleFileUpdate(update.file)
 
@@ -442,6 +448,30 @@ class TelegramService: ObservableObject {
         }
     }
 
+    private func handleMessageSendSucceeded(oldMessageId: Int64, message: Message) {
+        // Replace the local message (with temp ID) with the server message
+        if let index = messages.firstIndex(where: { $0.id == oldMessageId }) {
+            messages[index] = message
+            print("📤 Message send succeeded: \(oldMessageId) → \(message.id)")
+        }
+    }
+
+    private func handleMessageSendFailed(oldMessageId: Int64, message: Message, errorMessage: String) {
+        print("❌ Message send failed: \(oldMessageId), error: \(errorMessage)")
+
+        // Update the local message to show failure state
+        if let index = messages.firstIndex(where: { $0.id == oldMessageId }) {
+            messages[index] = message
+        }
+
+        // Post notification so UI can show retry option
+        NotificationCenter.default.post(
+            name: .messageSendFailed,
+            object: message,
+            userInfo: ["errorMessage": errorMessage]
+        )
+    }
+
     private func handleMessageContentUpdate(messageId: Int64, chatId: Int64, content: MessageContent) {
         guard chatId == selectedChat?.id else { return }
 
@@ -541,5 +571,6 @@ enum TelegramServiceError: Swift.Error {
 extension Foundation.Notification.Name {
     static let newIncomingMessage = Foundation.Notification.Name("newIncomingMessage")
     static let newVoiceMessage = Foundation.Notification.Name("newVoiceMessage")
+    static let messageSendFailed = Foundation.Notification.Name("messageSendFailed")
     static let voiceDownloaded = Foundation.Notification.Name("voiceDownloaded")
 }

@@ -41,6 +41,11 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .recordingAutoStopped)) { _ in
             sendRecording()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .messageSendFailed)) { notification in
+            if let errorMessage = notification.userInfo?["errorMessage"] as? String {
+                showToast(ToastData(message: "Send failed: \(errorMessage)", style: .error, icon: "exclamationmark.triangle.fill"), autoDismiss: false)
+            }
+        }
         .onChange(of: telegramService.error?.localizedDescription) {
             if let error = telegramService.error {
                 showToast(ToastData(message: error.localizedDescription, style: .error, icon: "exclamationmark.triangle.fill"))

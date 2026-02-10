@@ -21,6 +21,19 @@ struct ContentView: View {
                 authPrompt
             }
 
+            // Connection banner overlay (top)
+            VStack(spacing: 0) {
+                if isDisconnected {
+                    ConnectionBanner(
+                        state: telegramService.connectionState,
+                        queueCount: sendQueue.pendingCount
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                Spacer()
+            }
+            .animation(.easeInOut(duration: 0.3), value: isDisconnected)
+
             // Toast overlay (bottom)
             VStack {
                 Spacer()
@@ -280,6 +293,12 @@ struct ContentView: View {
 
     // MARK: - Helpers
 
+    private var isDisconnected: Bool {
+        guard let state = telegramService.connectionState else { return true }
+        if case .connectionStateReady = state { return false }
+        return true
+    }
+
     private var connectionStatusText: String {
         guard let state = telegramService.connectionState else { return "connecting..." }
         let queueCount = sendQueue.pendingCount
@@ -380,6 +399,74 @@ struct ContentView: View {
                     audioService.play(url: url)
                 }
             }
+        }
+    }
+}
+
+// MARK: - Connection Banner
+
+struct ConnectionBanner: View {
+    let state: ConnectionState?
+    let queueCount: Int
+
+    @State private var isPulsing = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: iconName)
+                .font(.system(size: 22, weight: .semibold))
+                .symbolEffect(.pulse, isActive: isPulsing)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 17, weight: .bold))
+
+                if queueCount > 0 {
+                    Text("\(queueCount) message\(queueCount == 1 ? "" : "s") waiting to send")
+                        .font(.system(size: 13))
+                        .opacity(0.85)
+                }
+            }
+
+            Spacer()
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(backgroundColor)
+        .onAppear { isPulsing = true }
+    }
+
+    private var iconName: String {
+        switch state {
+        case .connectionStateWaitingForNetwork, .none:
+            return "wifi.slash"
+        default:
+            return "arrow.triangle.2.circlepath"
+        }
+    }
+
+    private var title: String {
+        switch state {
+        case .connectionStateWaitingForNetwork, .none:
+            return "No Connection"
+        case .connectionStateConnecting:
+            return "Connecting..."
+        case .connectionStateConnectingToProxy:
+            return "Connecting to Proxy..."
+        case .connectionStateUpdating:
+            return "Updating..."
+        default:
+            return "Connecting..."
+        }
+    }
+
+    private var backgroundColor: Color {
+        switch state {
+        case .connectionStateWaitingForNetwork, .none:
+            return TelegramTheme.recordingRed
+        default:
+            return .orange
         }
     }
 }

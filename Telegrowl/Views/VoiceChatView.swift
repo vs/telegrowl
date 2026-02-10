@@ -1,12 +1,21 @@
 import SwiftUI
+import TDLibKit
 
 struct VoiceChatView: View {
     @StateObject private var voiceChatService = VoiceChatService()
+    @StateObject private var sendQueue = MessageSendQueue.shared
+    @EnvironmentObject var telegramService: TelegramService
     @Environment(\.dismiss) var dismiss
 
     let chatId: Int64
     let chatTitle: String
     var onAction: ((VoiceCommandAction) -> Void)?
+
+    private var isDisconnected: Bool {
+        guard let state = telegramService.connectionState else { return true }
+        if case .connectionStateReady = state { return false }
+        return true
+    }
 
     var body: some View {
         ZStack {
@@ -14,6 +23,15 @@ struct VoiceChatView: View {
 
             VStack(spacing: 0) {
                 header
+
+                if isDisconnected {
+                    ConnectionBanner(
+                        state: telegramService.connectionState,
+                        queueCount: sendQueue.pendingCount
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
                 Spacer()
                 stateVisual
                 stateLabel
@@ -22,6 +40,7 @@ struct VoiceChatView: View {
                 muteButton
                     .padding(.bottom, 40)
             }
+            .animation(.easeInOut(duration: 0.3), value: isDisconnected)
         }
         .task {
             // Stop VoiceCommandService for handoff

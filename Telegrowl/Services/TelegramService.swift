@@ -26,6 +26,8 @@ class TelegramService: ObservableObject {
     @Published var selectedChat: Chat?
     @Published var messages: [Message] = []
     @Published var error: Swift.Error?
+    @Published var isLoadingMore = false
+    @Published var hasMoreMessages = true
 
     // Computed for backward compatibility
     var isAuthenticated: Bool {
@@ -340,6 +342,7 @@ class TelegramService: ObservableObject {
     func selectChat(_ chat: Chat) {
         selectedChat = chat
         messages = []
+        hasMoreMessages = true
         loadMessages(chatId: chat.id)
     }
 
@@ -376,9 +379,49 @@ class TelegramService: ObservableObject {
 
                 // TDLib returns newest-first, reverse for oldest-first display (standard chat order)
                 messages = Array((history?.messages ?? []).reversed())
+                hasMoreMessages = messages.count >= limit
                 print("📱 Loaded \(messages.count) messages")
             } catch {
                 print("❌ Failed to load messages: \(error)")
+            }
+        }
+    }
+
+    func loadMoreMessages(chatId: Int64) {
+        guard !isLoadingMore, hasMoreMessages else { return }
+        guard let oldestMessageId = messages.first?.id else { return }
+
+        isLoadingMore = true
+        print("📱 Loading more messages before \(oldestMessageId)")
+
+        Task {
+            do {
+                let history = try await api?.getChatHistory(
+                    chatId: chatId,
+                    fromMessageId: oldestMessageId,
+                    limit: 30,
+                    offset: 0,
+                    onlyLocal: false
+                )
+
+                let olderMessages = Array((history?.messages ?? []).reversed())
+                if olderMessages.isEmpty {
+                    hasMoreMessages = false
+                    print("📱 No more messages to load")
+                } else {
+                    let existingIds = Set(messages.map { $0.id })
+                    let newMessages = olderMessages.filter { !existingIds.contains($0.id) }
+                    if newMessages.isEmpty {
+                        hasMoreMessages = false
+                    } else {
+                        messages.insert(contentsOf: newMessages, at: 0)
+                        print("📱 Loaded \(newMessages.count) more messages (total: \(messages.count))")
+                    }
+                }
+                isLoadingMore = false
+            } catch {
+                print("❌ Failed to load more messages: \(error)")
+                isLoadingMore = false
             }
         }
     }

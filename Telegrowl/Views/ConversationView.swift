@@ -7,10 +7,25 @@ struct ConversationView: View {
 
     let chatId: Int64
 
+    @State private var scrollAnchorId: Int64?
+    @State private var hasScrolledToBottom = false
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
+                    // Load-more trigger: appears at top, fires when scrolled into view
+                    if telegramService.hasMoreMessages && !telegramService.messages.isEmpty {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .onAppear {
+                                guard hasScrolledToBottom else { return }
+                                scrollAnchorId = telegramService.messages.first?.id
+                                telegramService.loadMoreMessages(chatId: chatId)
+                            }
+                    }
+
                     ForEach(Array(telegramService.messages.enumerated()), id: \.element.id) { index, message in
                         let nextMessage = index + 1 < telegramService.messages.count ? telegramService.messages[index + 1] : nil
                         let prevMessage = index > 0 ? telegramService.messages[index - 1] : nil
@@ -27,11 +42,20 @@ struct ConversationView: View {
                 .padding(.horizontal, 8)
             }
             .background(TelegramTheme.chatBackground)
-            .onChange(of: telegramService.messages.count) { _, _ in
-                withAnimation {
-                    if let lastMessage = telegramService.messages.last {
-                        proxy.scrollTo(lastMessage.id, anchor: .bottom)
+            // Scroll to bottom only when new messages arrive (last message changes)
+            .onChange(of: telegramService.messages.last?.id) { _, newId in
+                if let newId {
+                    withAnimation {
+                        proxy.scrollTo(newId, anchor: .bottom)
                     }
+                    hasScrolledToBottom = true
+                }
+            }
+            // Preserve scroll position when older messages are prepended
+            .onChange(of: telegramService.isLoadingMore) { wasLoading, isLoading in
+                if wasLoading && !isLoading, let anchorId = scrollAnchorId {
+                    proxy.scrollTo(anchorId, anchor: .top)
+                    scrollAnchorId = nil
                 }
             }
         }

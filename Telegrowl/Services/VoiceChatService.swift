@@ -58,6 +58,8 @@ class VoiceChatService: NSObject, ObservableObject {
 
     // Audio file for recording — accessed from audio thread, so nonisolated(unsafe)
     private nonisolated(unsafe) var audioFile: AVAudioFile?
+    // When false, audio thread skips writing to file (trims trailing silence)
+    private nonisolated(unsafe) var shouldWriteAudio = true
 
     // MARK: - Speech Recognition
     private var speechRecognizer: SFSpeechRecognizer?
@@ -195,8 +197,9 @@ class VoiceChatService: NSObject, ObservableObject {
         // Feed speech recognizer synchronously on audio thread (append is thread-safe)
         recognitionRequest?.append(buffer)
 
-        // Write to recording file synchronously on audio thread (before buffer is reused)
-        if let file = audioFile {
+        // Write to recording file synchronously on audio thread (before buffer is reused).
+        // shouldWriteAudio is false during trailing silence to trim it from the recording.
+        if let file = audioFile, shouldWriteAudio {
             do {
                 try file.write(from: buffer)
             } catch {
@@ -252,6 +255,7 @@ class VoiceChatService: NSObject, ObservableObject {
 
             if isVoice {
                 silenceStartTime = nil
+                shouldWriteAudio = true  // resume writing when voice returns
             } else {
                 if let silenceStart = silenceStartTime {
                     if Foundation.Date().timeIntervalSince(silenceStart) >= silenceDuration {
@@ -259,6 +263,7 @@ class VoiceChatService: NSObject, ObservableObject {
                     }
                 } else {
                     silenceStartTime = Foundation.Date()
+                    shouldWriteAudio = false  // stop writing trailing silence
                 }
             }
 
@@ -294,6 +299,7 @@ class VoiceChatService: NSObject, ObservableObject {
             // audioFile is nonisolated(unsafe) — set it here on MainActor,
             // processAudioBuffer reads it on the audio thread to write buffers.
             audioFile = try AVAudioFile(forWriting: url, settings: settings)
+            shouldWriteAudio = true
             recordingURL = url
             recordingStartTime = Foundation.Date()
             silenceStartTime = nil
@@ -321,8 +327,11 @@ class VoiceChatService: NSObject, ObservableObject {
             return
         }
 
-        let duration = Foundation.Date().timeIntervalSince(startTime)
+        // Use silenceStartTime as end of useful audio (trailing silence was not written)
+        let audioEnd = silenceStartTime ?? Foundation.Date()
+        let duration = audioEnd.timeIntervalSince(startTime)
         audioFile = nil
+        shouldWriteAudio = true
         recordingURL = nil
         recordingStartTime = nil
         silenceStartTime = nil

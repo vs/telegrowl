@@ -350,27 +350,36 @@ class VoiceChatService: NSObject, ObservableObject {
         state = .processing
         haptic(.light)
 
-        // Send pipeline
+        // Send pipeline: convert then enqueue for persistent delivery
         let durationInt = Int(ceil(duration))
         let targetChatId = self.chatId
         Task.detached { [weak self] in
             do {
                 let (oggURL, waveform) = try await AudioConverter.convertToOpus(inputURL: url)
-                print("📤 VoiceChat: converted, sending...")
+                print("📤 VoiceChat: converted, enqueueing...")
 
-                try await TelegramService.shared.sendVoiceMessage(
-                    audioURL: oggURL,
-                    duration: durationInt,
-                    waveform: waveform,
-                    chatId: targetChatId
-                )
-                print("📤 VoiceChat: sent successfully")
+                await MainActor.run {
+                    MessageSendQueue.shared.enqueue(
+                        audioURL: oggURL,
+                        duration: durationInt,
+                        waveform: waveform,
+                        chatId: targetChatId
+                    )
+                }
 
-                // Only delete the M4A source. Keep the OGG — TDLib reads it
-                // asynchronously for upload. Deleting it early causes send failures.
+                // Delete M4A source (enqueue moved the OGG into send_queue/)
                 try? FileManager.default.removeItem(at: url)
             } catch {
-                print("❌ VoiceChat: send pipeline failed: \(error)")
+                print("❌ VoiceChat: conversion failed: \(error)")
+                // Enqueue the M4A as fallback
+                await MainActor.run {
+                    MessageSendQueue.shared.enqueue(
+                        audioURL: url,
+                        duration: durationInt,
+                        waveform: nil,
+                        chatId: targetChatId
+                    )
+                }
             }
 
             // Return to listening or play queued messages

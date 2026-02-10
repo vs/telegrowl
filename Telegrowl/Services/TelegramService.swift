@@ -15,7 +15,7 @@ class TelegramService: ObservableObject {
 
     // MARK: - TDLib Client
     private var manager: TDLibClientManager?
-    private var api: TDLibClient?
+    private(set) var api: TDLibClient?
     private var isDemoMode = false
 
     // MARK: - Published State
@@ -426,11 +426,12 @@ class TelegramService: ObservableObject {
         }
     }
 
-    func sendVoiceMessage(audioURL: URL, duration: Int, waveform: Data?, chatId: Int64? = nil) async throws {
+    @discardableResult
+    func sendVoiceMessage(audioURL: URL, duration: Int, waveform: Data?, chatId: Int64? = nil) async throws -> Int64 {
         let targetChatId = chatId ?? selectedChat?.id
         guard let targetChatId else {
             print("❌ No chat selected")
-            return
+            return 0
         }
 
         // Resolve symlinks to get canonical path that TDLib's realpath() can find
@@ -463,13 +464,13 @@ class TelegramService: ObservableObject {
                 replyTo: nil,
                 topicId: nil
             )
-            print("📤 sendMessage returned: id=\(result?.id ?? 0), sendingState=\(String(describing: result?.sendingState))")
+            let msgId = result?.id ?? 0
+            print("📤 sendMessage returned: id=\(msgId), sendingState=\(String(describing: result?.sendingState))")
+            return msgId
         } catch {
             print("📤 sendMessage threw: \(error)")
             throw error
         }
-
-        print("📤 Voice message sent")
     }
 
     private func handleNewMessage(_ message: Message) {
@@ -497,6 +498,12 @@ class TelegramService: ObservableObject {
             messages[index] = message
             print("📤 Message send succeeded: \(oldMessageId) → \(message.id)")
         }
+
+        NotificationCenter.default.post(
+            name: .messageSendSucceeded,
+            object: nil,
+            userInfo: ["oldMessageId": oldMessageId, "newMessageId": message.id]
+        )
     }
 
     private func handleMessageSendFailed(oldMessageId: Int64, message: Message, errorMessage: String) {
@@ -507,11 +514,11 @@ class TelegramService: ObservableObject {
             messages[index] = message
         }
 
-        // Post notification so UI can show retry option
+        // Post notification so queue/UI can handle retry
         NotificationCenter.default.post(
             name: .messageSendFailed,
             object: message,
-            userInfo: ["errorMessage": errorMessage]
+            userInfo: ["errorMessage": errorMessage, "oldMessageId": oldMessageId]
         )
     }
 

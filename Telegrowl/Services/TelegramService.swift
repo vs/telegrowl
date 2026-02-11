@@ -543,6 +543,10 @@ class TelegramService: ObservableObject {
 
     // MARK: - File Downloads
 
+    /// File IDs with pending (async) voice downloads. When the download completes
+    /// via updateFile, we post `.voiceDownloaded` so callers can play the file.
+    private var pendingVoiceDownloads = Set<Int>()
+
     func downloadPhoto(file: File) async throws -> File {
         guard let api else { throw TelegramServiceError.notConnected }
         return try await api.downloadFile(
@@ -556,6 +560,14 @@ class TelegramService: ObservableObject {
 
     func downloadVoice(_ voiceNote: VoiceNote, completion: @escaping (URL?) -> Void) {
         let fileId = voiceNote.voice.id
+
+        // If already downloaded locally, return immediately
+        if !voiceNote.voice.local.path.isEmpty && voiceNote.voice.local.isDownloadingCompleted {
+            print("📥 Voice file already local: \(voiceNote.voice.local.path)")
+            completion(URL(fileURLWithPath: voiceNote.voice.local.path))
+            return
+        }
+
         print("📥 Downloading voice file: \(fileId)")
 
         Task {
@@ -572,22 +584,54 @@ class TelegramService: ObservableObject {
                     print("📥 Downloaded to: \(path)")
                     completion(URL(fileURLWithPath: path))
                 } else {
+                    // Synchronous download returned no path — start async download
+                    // so TDLib retries when connectivity returns
+                    print("📥 Sync download returned no path, starting async download for \(fileId)")
+                    startAsyncVoiceDownload(fileId: fileId)
                     completion(nil)
                 }
             } catch {
-                print("❌ Download error: \(error)")
+                print("❌ Download error: \(error), starting async download for \(fileId)")
+                startAsyncVoiceDownload(fileId: fileId)
                 completion(nil)
             }
         }
     }
 
-    private func handleFileUpdate(_ file: File) {
-        print("📁 File update: \(file.id), downloaded: \(file.local.isDownloadingCompleted)")
+    /// Start a non-blocking download that TDLib will complete when connectivity returns.
+    private func startAsyncVoiceDownload(fileId: Int) {
+        pendingVoiceDownloads.insert(fileId)
 
+        Task {
+            do {
+                try await api?.downloadFile(
+                    fileId: fileId,
+                    limit: 0,
+                    offset: 0,
+                    priority: 32,
+                    synchronous: false
+                )
+                print("📥 Async download queued for fileId=\(fileId)")
+            } catch {
+                print("❌ Async download request failed for fileId=\(fileId): \(error)")
+            }
+        }
+    }
+
+    private func handleFileUpdate(_ file: File) {
         if file.local.isDownloadingCompleted, !file.local.path.isEmpty {
+            let wasPending = pendingVoiceDownloads.remove(file.id) != nil
+            if wasPending {
+                print("📥 Deferred voice download completed: fileId=\(file.id) -> \(file.local.path)")
+            }
+
             NotificationCenter.default.post(
                 name: .voiceDownloaded,
-                object: URL(fileURLWithPath: file.local.path)
+                object: nil,
+                userInfo: [
+                    "fileId": file.id,
+                    "url": URL(fileURLWithPath: file.local.path)
+                ]
             )
         }
     }

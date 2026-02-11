@@ -112,6 +112,8 @@ class VoiceChatService: NSObject, ObservableObject {
         interruptionCancellable = nil
         AudioService.shared.stopPlayback()
         stopSpeechRecognition()
+        deferredDownloadCancellable?.cancel()
+        deferredDownloadCancellable = nil
         crossChatCancellable?.cancel()
         crossChatCancellable = nil
         crossChatWindowTimer?.invalidate()
@@ -519,26 +521,61 @@ class VoiceChatService: NSObject, ObservableObject {
         TelegramService.shared.downloadVoice(voiceNote) { [weak self] url in
             guard let self else { return }
             if let url {
-                AudioService.shared.play(url: url)
-
-                // Observe playback completion
-                self.playbackCancellable?.cancel()
-                self.playbackCancellable = AudioService.shared.$isPlaying
-                    .dropFirst()
-                    .filter { !$0 }
-                    .first()
-                    .sink { [weak self] _ in
-                        Task { @MainActor [weak self] in
-                            guard let self else { return }
-                            print("🔊 VoiceChat: playback finished")
-                            self.playNext()
-                        }
-                    }
+                self.playDownloadedVoice(url: url)
             } else {
-                print("❌ VoiceChat: download failed, skipping")
-                self.playNext()
+                // Download deferred (no connectivity). Re-insert at front of queue
+                // and go back to listening. When the download completes via updateFile,
+                // voiceDownloaded notification will trigger playback.
+                print("📥 VoiceChat: download deferred, waiting for connectivity")
+                self.incomingQueue.insert(voiceNote, at: 0)
+                self.state = .listening
+                self.observeDeferredDownload(fileId: voiceNote.voice.id)
             }
         }
+    }
+
+    private func playDownloadedVoice(url: URL) {
+        AudioService.shared.play(url: url)
+
+        // Observe playback completion
+        playbackCancellable?.cancel()
+        playbackCancellable = AudioService.shared.$isPlaying
+            .dropFirst()
+            .filter { !$0 }
+            .first()
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    print("🔊 VoiceChat: playback finished")
+                    self.playNext()
+                }
+            }
+    }
+
+    private var deferredDownloadCancellable: AnyCancellable?
+
+    /// Listen for a deferred voice download completing so we can play it.
+    private func observeDeferredDownload(fileId: Int) {
+        deferredDownloadCancellable?.cancel()
+        deferredDownloadCancellable = NotificationCenter.default
+            .publisher(for: .voiceDownloaded)
+            .sink { [weak self] notification in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    guard let notifFileId = notification.userInfo?["fileId"] as? Int,
+                          notifFileId == fileId,
+                          let url = notification.userInfo?["url"] as? URL else { return }
+
+                    print("📥 VoiceChat: deferred download ready, playing")
+                    self.deferredDownloadCancellable?.cancel()
+                    self.deferredDownloadCancellable = nil
+
+                    // Remove the re-queued voice note (it's now downloaded)
+                    self.incomingQueue.removeAll { $0.voice.id == fileId }
+                    self.state = .playing
+                    self.playDownloadedVoice(url: url)
+                }
+            }
     }
 
     // MARK: - Speech Recognition

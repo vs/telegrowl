@@ -51,6 +51,9 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .newVoiceMessage)) { notification in
             handleNewVoiceMessage(notification)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .voiceDownloaded)) { notification in
+            handleDeferredVoiceDownload(notification)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .recordingAutoStopped)) { _ in
             sendRecording()
         }
@@ -398,7 +401,20 @@ struct ContentView: View {
                 if let url = url {
                     audioService.play(url: url)
                 }
+                // If url is nil, TelegramService started an async download.
+                // handleDeferredVoiceDownload will auto-play when it completes.
             }
+        }
+    }
+
+    /// Auto-play voice messages that were deferred due to connectivity issues.
+    private func handleDeferredVoiceDownload(_ notification: Foundation.Notification) {
+        guard Config.autoPlayResponses else { return }
+        guard !audioService.isPlaying else { return }
+
+        if let url = notification.userInfo?["url"] as? URL {
+            print("📥 Playing deferred voice download: \(url.lastPathComponent)")
+            audioService.play(url: url)
         }
     }
 }

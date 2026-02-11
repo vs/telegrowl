@@ -7,7 +7,6 @@ struct ContentView: View {
 
     @State private var navigationPath = NavigationPath()
     @State private var showingAuth = false
-    @State private var isDrivingMode = false
     @State private var currentToast: ToastData?
     @State private var toastDismissTask: Task<Void, Never>?
     @State private var retryAction: (() -> Void)?
@@ -51,13 +50,7 @@ struct ContentView: View {
     // MARK: - Authenticated View
 
     private var authenticatedView: some View {
-        Group {
-            if isDrivingMode {
-                drivingModeView
-            } else {
-                navigationView
-            }
-        }
+        navigationView
     }
 
     private var navigationView: some View {
@@ -65,6 +58,14 @@ struct ContentView: View {
             ChatListView()
                 .navigationDestination(for: Int64.self) { chatId in
                     conversationDestination(chatId: chatId)
+                }
+                .navigationDestination(for: String.self) { value in
+                    if value.hasPrefix("voiceChat-"),
+                       let chatId = Int64(value.replacingOccurrences(of: "voiceChat-", with: "")),
+                       let chat = telegramService.chats.first(where: { $0.id == chatId }) {
+                        VoiceChatView(chatId: chatId, chatTitle: chat.title)
+                            .navigationBarHidden(true)
+                    }
                 }
         }
         .tint(TelegramTheme.accent)
@@ -103,8 +104,9 @@ struct ContentView: View {
                 chatToolbarTitle
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button(action: { isDrivingMode = true }) {
-                    Image(systemName: "car.fill")
+                NavigationLink(value: "voiceChat-\(chatId)") {
+                    Image(systemName: "waveform.circle.fill")
+                        .font(.system(size: 22))
                         .foregroundColor(TelegramTheme.accent)
                 }
             }
@@ -129,70 +131,6 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Driving Mode
-
-    private var drivingModeView: some View {
-        ZStack {
-            Color(hex: "1a1a2e").ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Button(action: { isDrivingMode = false }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                            Text("Back")
-                        }
-                        .foregroundColor(.white.opacity(0.7))
-                    }
-
-                    Spacer()
-
-                    if let chat = telegramService.selectedChat {
-                        Text(chat.title)
-                            .font(.headline)
-                            .foregroundColor(.white.opacity(0.8))
-                            .lineLimit(1)
-                    }
-
-                    Spacer()
-                    Color.clear.frame(width: 60)
-                }
-                .padding()
-
-                Spacer()
-
-                RecordButton(
-                    isRecording: audioService.isRecording,
-                    audioLevel: audioService.audioLevel,
-                    duration: audioService.recordingDuration
-                ) {
-                    audioService.startRecording()
-                } onRelease: {
-                    sendRecording()
-                }
-
-                Text(audioService.isRecording ? "Release to send" : "Hold to talk")
-                    .font(.headline)
-                    .foregroundColor(.white.opacity(0.6))
-                    .padding(.top, 20)
-
-                Spacer()
-
-                // Connection status
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(connectionStatusColor)
-                        .frame(width: 8, height: 8)
-                    Text(connectionStatusText)
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.5))
-                }
-                .padding(.bottom, 20)
-            }
-        }
-    }
-
     // MARK: - Auth Prompt
 
     private var authPrompt: some View {
@@ -212,7 +150,7 @@ struct ContentView: View {
                         .fontWeight(.bold)
                         .foregroundColor(TelegramTheme.textPrimary)
 
-                    Text("Hands-free voice messaging for Telegram")
+                    Text("Voice chat for Telegram")
                         .font(.subheadline)
                         .foregroundColor(TelegramTheme.textSecondary)
                 }
@@ -242,18 +180,6 @@ struct ContentView: View {
     }
 
     // MARK: - Helpers
-
-    private var connectionStatusColor: Color {
-        guard let state = telegramService.connectionState else { return .red }
-        switch state {
-        case .connectionStateReady:
-            return .green
-        case .connectionStateConnecting, .connectionStateConnectingToProxy, .connectionStateUpdating:
-            return .yellow
-        case .connectionStateWaitingForNetwork:
-            return .red
-        }
-    }
 
     private var connectionStatusText: String {
         guard let state = telegramService.connectionState else { return "connecting..." }

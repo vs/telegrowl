@@ -50,6 +50,6 @@
     <key>NSMicrophoneUsageDescription</key>
     <string>Telegrowl needs microphone access to record voice messages</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Telegrowl uses speech recognition for voice commands</string>
+    <string>Telegrowl uses speech recognition for hands-free voice commands like mute and unmute.</string>
 </dict>
 </plist>

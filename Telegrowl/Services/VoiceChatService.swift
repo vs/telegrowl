@@ -67,6 +67,13 @@ class VoiceChatService: NSObject, ObservableObject {
     private var recognitionTask: SFSpeechRecognitionTask?
     private var recognitionRestartTimer: Timer?
 
+    /// Transcription word count when recording started — used to detect speech vs noise.
+    private var transcriptionWordCountAtRecordingStart: Int = 0
+    /// Whether the speech recognizer detected new words during the current recording.
+    private var speechDetectedDuringRecording: Bool = false
+    /// Current transcription word count, updated from recognizer callback.
+    private var currentTranscriptionWordCount: Int = 0
+
     // MARK: - Public Methods
 
     /// Start voice chat session for a given chat.
@@ -303,6 +310,8 @@ class VoiceChatService: NSObject, ObservableObject {
             recordingURL = url
             recordingStartTime = Foundation.Date()
             silenceStartTime = nil
+            transcriptionWordCountAtRecordingStart = currentTranscriptionWordCount
+            speechDetectedDuringRecording = false
             state = .recording
 
             // Start max duration timer
@@ -341,6 +350,17 @@ class VoiceChatService: NSObject, ObservableObject {
         // Check minimum duration
         if duration < Config.minRecordingDuration {
             print("🎙️ VoiceChat: recording too short (\(String(format: "%.1f", duration))s), discarding")
+            deleteFile(at: url)
+            state = .listening
+            return
+        }
+
+        // Check if speech recognizer detected actual words — discard noise-only recordings.
+        // Fallback: accept longer recordings (≥2s) even without recognizer confirmation,
+        // since mixed-language speech may not produce segments in the configured locale.
+        let speechConfirmed = speechDetectedDuringRecording || duration >= 2.0
+        if !speechConfirmed {
+            print("🎙️ VoiceChat: no speech detected (\(String(format: "%.1f", duration))s of noise), discarding")
             deleteFile(at: url)
             state = .listening
             return
@@ -524,9 +544,10 @@ class VoiceChatService: NSObject, ObservableObject {
     // MARK: - Speech Recognition
 
     private func startSpeechRecognition() {
-        speechRecognizer = SFSpeechRecognizer()
+        let locale = Locale(identifier: Config.speechLocale)
+        speechRecognizer = SFSpeechRecognizer(locale: locale)
         guard let speechRecognizer, speechRecognizer.isAvailable else {
-            print("⚠️ VoiceChat: speech recognition not available")
+            print("⚠️ VoiceChat: speech recognition not available for locale \(Config.speechLocale)")
             return
         }
 
@@ -541,6 +562,17 @@ class VoiceChatService: NSObject, ObservableObject {
 
             if let result {
                 let text = result.bestTranscription.formattedString.lowercased()
+                let wordCount = result.bestTranscription.segments.count
+
+                // Track speech activity for noise vs speech discrimination
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.currentTranscriptionWordCount = wordCount
+                    if self.state == .recording && wordCount > self.transcriptionWordCountAtRecordingStart {
+                        self.speechDetectedDuringRecording = true
+                    }
+                }
+
                 let muteCmd = Config.muteCommand.lowercased()
                 let unmuteCmd = Config.unmuteCommand.lowercased()
                 let closeCmd = Config.closeCommand.lowercased()
@@ -598,6 +630,11 @@ class VoiceChatService: NSObject, ObservableObject {
 
     private func restartSpeechRecognition() {
         stopSpeechRecognition()
+        currentTranscriptionWordCount = 0
+        // If recording, snapshot the reset count so we detect new words from zero
+        if state == .recording {
+            transcriptionWordCountAtRecordingStart = 0
+        }
         startSpeechRecognition()
     }
 

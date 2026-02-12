@@ -6,6 +6,10 @@ struct ChatListView: View {
 
     @State private var searchText = ""
     @State private var showingSettings = false
+    @StateObject private var voiceCommandService = VoiceCommandService.shared
+    @State private var aliasEditChatId: Int64?
+    @State private var aliasEditText = ""
+    @State private var showingAliasAlert = false
 
     var filteredChats: [Chat] {
         if searchText.isEmpty {
@@ -27,6 +31,31 @@ struct ChatListView: View {
                     ChatRow(chat: chat)
                 }
                 .listRowInsets(EdgeInsets(top: 0, leading: TelegramTheme.chatListAvatarInset, bottom: 0, trailing: 16))
+                .contextMenu {
+                    let alias = Config.voiceAlias(for: chat.id)
+                    if let alias {
+                        Button {
+                            aliasEditChatId = chat.id
+                            aliasEditText = alias
+                            showingAliasAlert = true
+                        } label: {
+                            Label("Edit Voice Alias (\(alias))", systemImage: "pencil")
+                        }
+                        Button(role: .destructive) {
+                            Config.removeVoiceAlias(chatId: chat.id)
+                        } label: {
+                            Label("Clear Voice Alias", systemImage: "trash")
+                        }
+                    } else {
+                        Button {
+                            aliasEditChatId = chat.id
+                            aliasEditText = ""
+                            showingAliasAlert = true
+                        } label: {
+                            Label("Set Voice Alias", systemImage: "mic.badge.plus")
+                        }
+                    }
+                }
             }
         }
         .listStyle(.plain)
@@ -51,9 +80,29 @@ struct ChatListView: View {
                     }
                 }
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                if Config.voiceControlEnabled {
+                    VoiceListeningIndicator(state: voiceCommandService.state)
+                }
+            }
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+        }
+        .alert("Voice Alias", isPresented: $showingAliasAlert) {
+            TextField("Alias (e.g. bot)", text: $aliasEditText)
+                .autocorrectionDisabled()
+                #if os(iOS)
+                .textInputAutocapitalization(.never)
+                #endif
+            Button("Save") {
+                if let chatId = aliasEditChatId, !aliasEditText.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Config.setVoiceAlias(chatId: chatId, alias: aliasEditText.trimmingCharacters(in: .whitespaces))
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Set a short name for voice commands (e.g. \"bot\" instead of the full name)")
         }
         .onAppear {
             telegramService.loadChats()
@@ -73,10 +122,20 @@ struct ChatRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 // Top line: title + timestamp
                 HStack {
-                    Text(chat.title)
-                        .font(TelegramTheme.titleFont)
-                        .foregroundColor(TelegramTheme.textPrimary)
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(chat.title)
+                            .font(TelegramTheme.titleFont)
+                            .foregroundColor(TelegramTheme.textPrimary)
+                            .lineLimit(1)
+
+                        if let alias = Config.voiceAlias(for: chat.id) {
+                            Text(alias)
+                                .font(.system(size: 12))
+                                .foregroundColor(TelegramTheme.textSecondary)
+                                .italic()
+                                .lineLimit(1)
+                        }
+                    }
 
                     Spacer()
 
@@ -146,6 +205,33 @@ struct ChatRow: View {
             let formatter = DateFormatter()
             formatter.dateStyle = .short
             return formatter.string(from: date)
+        }
+    }
+}
+
+struct VoiceListeningIndicator: View {
+    let state: VoiceCommandState
+
+    var body: some View {
+        switch state {
+        case .listening, .awaitingResponse:
+            Image(systemName: "mic.fill")
+                .font(.system(size: 14))
+                .foregroundColor(TelegramTheme.accent)
+                .symbolEffect(.pulse)
+        case .paused:
+            Image(systemName: "mic.slash.fill")
+                .font(.system(size: 14))
+                .foregroundColor(TelegramTheme.textSecondary)
+        case .announcing:
+            Image(systemName: "speaker.wave.2.fill")
+                .font(.system(size: 14))
+                .foregroundColor(TelegramTheme.accent)
+        case .transitioning:
+            ProgressView()
+                .scaleEffect(0.7)
+        case .idle:
+            EmptyView()
         }
     }
 }

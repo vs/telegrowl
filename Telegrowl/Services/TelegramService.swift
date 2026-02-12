@@ -424,16 +424,21 @@ class TelegramService: ObservableObject {
     }
 
     private func handleNewMessage(_ message: Message) {
-        guard message.chatId == selectedChat?.id else { return }
-
-        if !messages.contains(where: { $0.id == message.id }) {
-            messages.append(message)
+        // Append to messages array if viewing this chat
+        if message.chatId == selectedChat?.id {
+            if !messages.contains(where: { $0.id == message.id }) {
+                messages.append(message)
+            }
         }
 
-        // Notify for auto-play if incoming voice
-        if !message.isOutgoing,
-           case .messageVoiceNote = message.content {
-            NotificationCenter.default.post(name: .newVoiceMessage, object: message)
+        // Notify for incoming messages (any chat)
+        if !message.isOutgoing {
+            NotificationCenter.default.post(name: .newIncomingMessage, object: message)
+
+            // Legacy: specific voice note notification
+            if case .messageVoiceNote = message.content {
+                NotificationCenter.default.post(name: .newVoiceMessage, object: message)
+            }
         }
     }
 
@@ -534,6 +539,7 @@ enum TelegramServiceError: Swift.Error {
 // MARK: - Notifications
 
 extension Foundation.Notification.Name {
+    static let newIncomingMessage = Foundation.Notification.Name("newIncomingMessage")
     static let newVoiceMessage = Foundation.Notification.Name("newVoiceMessage")
     static let voiceDownloaded = Foundation.Notification.Name("voiceDownloaded")
 }

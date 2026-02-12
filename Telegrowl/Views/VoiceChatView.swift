@@ -6,6 +6,7 @@ struct VoiceChatView: View {
 
     let chatId: Int64
     let chatTitle: String
+    var onAction: ((VoiceCommandAction) -> Void)?
 
     var body: some View {
         ZStack {
@@ -23,8 +24,20 @@ struct VoiceChatView: View {
             }
         }
         .task {
+            // Stop VoiceCommandService for handoff
+            VoiceCommandService.shared.onChatOpening()
+
             let granted = await VoiceChatService.requestPermissions()
             if granted {
+                voiceChatService.onAction = { action in
+                    switch action {
+                    case .closeChat:
+                        dismiss()
+                    default:
+                        onAction?(action)
+                        dismiss()
+                    }
+                }
                 voiceChatService.start(chatId: chatId)
             } else {
                 dismiss()

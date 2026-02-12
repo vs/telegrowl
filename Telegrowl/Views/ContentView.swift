@@ -1,9 +1,11 @@
 import SwiftUI
 import TDLibKit
+import AVFoundation
 
 struct ContentView: View {
     @EnvironmentObject var telegramService: TelegramService
     @EnvironmentObject var audioService: AudioService
+    @StateObject private var voiceCommandService = VoiceCommandService.shared
 
     @State private var navigationPath = NavigationPath()
     @State private var showingAuth = false
@@ -45,6 +47,21 @@ struct ContentView: View {
                 telegramService.error = nil
             }
         }
+        .task {
+            if telegramService.isAuthenticated {
+                await startVoiceControlIfNeeded()
+            }
+        }
+        .onChange(of: telegramService.isAuthenticated) { _, isAuth in
+            if isAuth {
+                Task { await startVoiceControlIfNeeded() }
+            }
+        }
+        .onChange(of: navigationPath.count) { oldCount, newCount in
+            if newCount == 0 && oldCount > 0 {
+                voiceCommandService.onChatClosed()
+            }
+        }
     }
 
     // MARK: - Authenticated View
@@ -63,8 +80,10 @@ struct ContentView: View {
                     if value.hasPrefix("voiceChat-"),
                        let chatId = Int64(value.replacingOccurrences(of: "voiceChat-", with: "")),
                        let chat = telegramService.chats.first(where: { $0.id == chatId }) {
-                        VoiceChatView(chatId: chatId, chatTitle: chat.title)
-                            .navigationBarHidden(true)
+                        VoiceChatView(chatId: chatId, chatTitle: chat.title) { action in
+                            handleVoiceAction(action, telegramService: telegramService)
+                        }
+                        .navigationBarHidden(true)
                     }
                 }
         }
@@ -176,6 +195,83 @@ struct ContentView: View {
 
                 Spacer()
             }
+        }
+    }
+
+    // MARK: - Voice Control
+
+    private func startVoiceControlIfNeeded() async {
+        guard Config.voiceControlEnabled else { return }
+        let granted = await VoiceCommandService.requestPermissions()
+        if granted {
+            voiceCommandService.onAction = { action in
+                handleVoiceAction(action, telegramService: telegramService)
+            }
+            voiceCommandService.start()
+        }
+    }
+
+    private func handleVoiceAction(_ action: VoiceCommandAction, telegramService: TelegramService?) {
+        switch action {
+        case .openChat(let chatId, _):
+            voiceCommandService.onChatOpening()
+            if let chat = telegramService?.chats.first(where: { $0.id == chatId }) {
+                telegramService?.selectChat(chat)
+            }
+            navigationPath = NavigationPath()
+            navigationPath.append(chatId)
+            navigationPath.append("voiceChat-\(chatId)")
+
+        case .switchChat(let chatId, let chatTitle):
+            voiceCommandService.onChatOpening()
+            voiceCommandService.stop()
+            let synth = AVSpeechSynthesizer()
+            let utterance = AVSpeechUtterance(string: "Starting chat with \(chatTitle)")
+            utterance.voice = AVSpeechSynthesisVoice(language: Config.speechLocale)
+            synth.speak(utterance)
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                if let chat = telegramService?.chats.first(where: { $0.id == chatId }) {
+                    telegramService?.selectChat(chat)
+                }
+                navigationPath = NavigationPath()
+                navigationPath.append(chatId)
+                navigationPath.append("voiceChat-\(chatId)")
+            }
+
+        case .closeChat:
+            navigationPath = NavigationPath()
+            voiceCommandService.onChatClosed()
+
+        case .playMessage(let message, _):
+            playAnnouncedMessage(message)
+
+        case .exitApp:
+            voiceCommandService.stop()
+            #if canImport(UIKit)
+            UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
+            #endif
+        }
+    }
+
+    private func playAnnouncedMessage(_ message: Message) {
+        switch message.content {
+        case .messageVoiceNote(let voiceContent):
+            TelegramService.shared.downloadVoice(voiceContent.voiceNote) { url in
+                if let url {
+                    AudioService.shared.play(url: url)
+                }
+            }
+
+        case .messageText(let text):
+            if Config.readTextMessages {
+                let utterance = AVSpeechUtterance(string: text.text.text)
+                utterance.voice = AVSpeechSynthesisVoice(language: Config.speechLocale)
+                AVSpeechSynthesizer().speak(utterance)
+            }
+
+        default:
+            break
         }
     }
 

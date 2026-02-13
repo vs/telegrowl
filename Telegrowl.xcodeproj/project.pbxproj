@@ -11,7 +11,6 @@
 		239290FFC911F84DF2ED5F2A /* MessageSendQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20AAD1996C4FC847F1D0881D /* MessageSendQueue.swift */; };
 		24010F831B01829D3EACD770 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8503B655E47DA3A3BD366E5E /* Config.swift */; };
 		281F6E3FD2EEB04D2EB1A49C /* AvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A5A94D35F564CEC75465CF /* AvatarView.swift */; };
-		2BA1C0A592A0738C26B4DD8F /* VoiceChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242D5EEFE6B2D0DFE8E26CCE /* VoiceChatView.swift */; };
 		2FFD1FB6B646F0E9A40742D6 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8323551A5274A7BE3EEEDE9 /* ChatListView.swift */; };
 		3B832CF75ED6251C12DA7323 /* BubbleShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F3901E94199B49CA5F8DA9 /* BubbleShape.swift */; };
 		3CBFAAAAA457172A091ACA21 /* TelegramTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8769073548C0A187A242438B /* TelegramTheme.swift */; };
@@ -19,31 +18,24 @@
 		5DED95F13437E8326743321F /* AudioConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53D54B8842268F1AEF17DF1F /* AudioConverter.swift */; };
 		729D5E8E19AC73F17FE2CF57 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDD19CCEA19643EB97AF41B /* SettingsView.swift */; };
 		79F676128CBD520DF8C450BD /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B187BC3D21B6B451F12DE301 /* AuthView.swift */; };
-		7EEEBCC22863F69383ED6A9E /* RecordButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8526112B82EA468C3BF748CF /* RecordButton.swift */; };
 		7FC04AA31DC2950F6E59FFAB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37493E4411FCCA57C9E8B462 /* ContentView.swift */; };
 		81DAEE62B2D1F9FCB52BD756 /* DictationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8624716FAB718125153FAFF3 /* DictationService.swift */; };
 		833FACDC1E7576DB356682A1 /* InputBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FFEB19B234BC8FB68EA4A6 /* InputBarView.swift */; };
 		86AFAA06F4AC3C239569858F /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD2A9FF4A2807B0FDC5DDFEC /* ConversationView.swift */; };
 		910B3D2F957C08AF1DA45184 /* TDLibKit in Frameworks */ = {isa = PBXBuildFile; productRef = BFFF8F7C5A24EEC6DEF14AEB /* TDLibKit */; };
-		AD06ECCA94224CC25FF71CA3 /* VoiceChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4558419F316C87CAF11CA47F /* VoiceChatService.swift */; };
 		B297ECA5BF7C0D816876B9C4 /* SwiftOGG in Frameworks */ = {isa = PBXBuildFile; productRef = B0E48CE4F84F397835ED9CB1 /* SwiftOGG */; };
 		DEC0237A8E2EA44464316531 /* AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A75191466C0D8A5D83F833 /* AudioService.swift */; };
 		E07D3789950F71610CD279CE /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FC20F08ECE62E6E0454EA01 /* ToastView.swift */; };
-		E1A489114F274D3B6C59EC76 /* VoiceCommandService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00E3442B4073BA60E2A6E542 /* VoiceCommandService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		00E3442B4073BA60E2A6E542 /* VoiceCommandService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCommandService.swift; sourceTree = "<group>"; };
 		20AAD1996C4FC847F1D0881D /* MessageSendQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageSendQueue.swift; sourceTree = "<group>"; };
-		242D5EEFE6B2D0DFE8E26CCE /* VoiceChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceChatView.swift; sourceTree = "<group>"; };
 		37493E4411FCCA57C9E8B462 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		41F3901E94199B49CA5F8DA9 /* BubbleShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleShape.swift; sourceTree = "<group>"; };
-		4558419F316C87CAF11CA47F /* VoiceChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceChatService.swift; sourceTree = "<group>"; };
 		53D54B8842268F1AEF17DF1F /* AudioConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConverter.swift; sourceTree = "<group>"; };
 		59AEA2D312F5AFA66B73A7C8 /* Telegrowl.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Telegrowl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D8B71203896E952930E85A1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8503B655E47DA3A3BD366E5E /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
-		8526112B82EA468C3BF748CF /* RecordButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordButton.swift; sourceTree = "<group>"; };
 		8624716FAB718125153FAFF3 /* DictationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationService.swift; sourceTree = "<group>"; };
 		8769073548C0A187A242438B /* TelegramTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramTheme.swift; sourceTree = "<group>"; };
 		901242977C0E7792517A34D2 /* TelegramService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramService.swift; sourceTree = "<group>"; };
@@ -115,8 +107,6 @@
 				8624716FAB718125153FAFF3 /* DictationService.swift */,
 				20AAD1996C4FC847F1D0881D /* MessageSendQueue.swift */,
 				901242977C0E7792517A34D2 /* TelegramService.swift */,
-				4558419F316C87CAF11CA47F /* VoiceChatService.swift */,
-				00E3442B4073BA60E2A6E542 /* VoiceCommandService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -139,11 +129,9 @@
 				37493E4411FCCA57C9E8B462 /* ContentView.swift */,
 				BD2A9FF4A2807B0FDC5DDFEC /* ConversationView.swift */,
 				B0FFEB19B234BC8FB68EA4A6 /* InputBarView.swift */,
-				8526112B82EA468C3BF748CF /* RecordButton.swift */,
 				FEDD19CCEA19643EB97AF41B /* SettingsView.swift */,
 				8769073548C0A187A242438B /* TelegramTheme.swift */,
 				9FC20F08ECE62E6E0454EA01 /* ToastView.swift */,
-				242D5EEFE6B2D0DFE8E26CCE /* VoiceChatView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -226,15 +214,11 @@
 				81DAEE62B2D1F9FCB52BD756 /* DictationService.swift in Sources */,
 				833FACDC1E7576DB356682A1 /* InputBarView.swift in Sources */,
 				239290FFC911F84DF2ED5F2A /* MessageSendQueue.swift in Sources */,
-				7EEEBCC22863F69383ED6A9E /* RecordButton.swift in Sources */,
 				729D5E8E19AC73F17FE2CF57 /* SettingsView.swift in Sources */,
 				1DE546CE0C62CB93AD2027C4 /* TelegramService.swift in Sources */,
 				3CBFAAAAA457172A091ACA21 /* TelegramTheme.swift in Sources */,
 				481E58A726410266B8A18B1C /* TelegrowlApp.swift in Sources */,
 				E07D3789950F71610CD279CE /* ToastView.swift in Sources */,
-				AD06ECCA94224CC25FF71CA3 /* VoiceChatService.swift in Sources */,
-				2BA1C0A592A0738C26B4DD8F /* VoiceChatView.swift in Sources */,
-				E1A489114F274D3B6C59EC76 /* VoiceCommandService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Telegrowl is a hands-free Telegram voice client for iOS, designed for drivers. It enables voice-based communication with Telegram AI bots through a one-tap recording interface and a hands-free voice chat mode. The app uses SwiftUI with iOS 17+ and TDLibKit for Telegram integration.
+Telegrowl is a hands-free Telegram voice client for iOS, designed for drivers. It enables voice-based communication with Telegram AI bots through trigger-word dictation, manual recording, and typed text input. The app uses SwiftUI with iOS 17+ and TDLibKit for Telegram integration.
 
-**Current Status:** TDLib integration complete, OGG/Opus encoding implemented, voice chat mode implemented, global voice control implemented. Needs real-device testing.
+**Current Status:** TDLib integration complete, OGG/Opus encoding implemented, trigger-word dictation implemented, unified message send queue operational. Needs real-device testing.
 
 ## Build & Run
 
@@ -33,124 +33,133 @@ open Telegrowl.xcodeproj
 | Package | Version | Purpose |
 |---------|---------|---------|
 | [TDLibKit](https://github.com/Swiftgram/TDLibKit) | 1.5.2-tdlib-1.8.60 | TDLib Swift wrapper for Telegram API |
-| [SwiftOGG](https://github.com/element-hq/swift-ogg) | 0.0.3 | M4A → OGG/Opus conversion (uses libopus/libogg) |
+| [SwiftOGG](https://github.com/element-hq/swift-ogg) | 0.0.3 | M4A -> OGG/Opus conversion (uses libopus/libogg) |
 
 ## Architecture
 
 ```
 TelegrowlApp (Entry)
     └── ContentView (Main UI Router)
-            ├── AuthView (phone → code → 2FA flow)
+            ├── AuthView (phone -> code -> 2FA flow)
             ├── ChatListView (chat selection)
-            ├── ConversationView (message bubbles + waveforms)
-            │       └── VoiceChatView (full-screen voice chat, via toolbar icon)
-            ├── RecordButton (gesture-based, 150px circular button)
-            └── ToastView (non-blocking status banners)
+            ├── ConversationDestination (per-chat wrapper)
+            │       ├── ConversationView (message bubbles + waveforms)
+            │       ├── InputBarView (text field + mic + dictation overlay)
+            │       └── DictationService (trigger-word dictation, per-session)
+            └── ToastView / ConnectionBanner (status overlays)
 
 Services (Singletons, @MainActor):
     ├── TelegramService - TDLib client, auth state machine, chat/message management
     ├── AudioService - M4A recording, playback, silence detection, haptics
-    ├── AudioConverter - M4A→OGG/Opus conversion, waveform generation, temp file cleanup
-    └── VoiceCommandService - Global voice commands, TTS announcements, announcement queue
+    ├── AudioConverter - M4A->OGG/Opus conversion, waveform generation, temp file cleanup
+    └── MessageSendQueue - Persistent FIFO queue for text, voice, and voice+caption messages
 
 Per-Session (@MainActor, NOT singleton):
-    └── VoiceChatService - AVAudioEngine VAD, speech recognition, recording, message queue
+    └── DictationService - Trigger-word detection, speech-to-text, voice recording, per-conversation
 ```
 
-**Manual Recording Data Flow:**
-1. User holds RecordButton → AudioService records M4A
-2. Release → AudioConverter converts M4A to OGG/Opus + generates waveform
-3. OGG file + waveform passed to TelegramService.sendVoiceMessage() (async throws)
-4. TDLib sends to Telegram, M4A temp file cleaned up
-   - Toast status progression: "Converting audio..." → "Sending..." → "Voice message sent"
-   - On conversion failure: M4A fallback with warning toast
-   - On send failure: error toast with Retry button (reuses converted file)
-5. Incoming voice messages trigger `.newVoiceMessage` notification → auto-play
+**Message Send Flow (all message types):**
+1. All messages go through `MessageSendQueue` (text typed, text dictated, voice manual, voice dictated)
+2. Text typed: user types in InputBarView text field -> `MessageSendQueue.enqueueText()`
+3. Text dictated: user says "text hello" -> DictationService transcribes -> `MessageSendQueue.enqueueText()`
+4. Voice manual: user taps mic in InputBarView -> AudioService records M4A -> AudioConverter -> `MessageSendQueue.enqueueVoice()`
+5. Voice dictated: user says "voice hello" -> DictationService records + transcribes -> AudioConverter -> `MessageSendQueue.enqueueVoice()` with caption
+6. Queue processes FIFO: sends via `TelegramService.sendTextMessage()` or `sendVoiceMessage()` (with optional caption)
+7. On send failure: TDLib `resendMessages` if `canRetry`, otherwise exponential backoff retry
+8. Queue persists to disk — survives app restart and connectivity loss
 
-**Voice Chat Data Flow:**
-1. User taps waveform icon in conversation toolbar → VoiceChatView opens
-2. VoiceChatService starts AVAudioEngine with input tap
-3. VAD detects voice → starts recording to AVAudioFile (on audio thread)
-4. Silence detected → finishes recording → converts to OGG/Opus → sends via TDLib
-5. Incoming bot voice messages queued → played sequentially when user is silent
-6. SFSpeechRecognizer listens for "mute"/"unmute" commands in parallel
-7. Audio interruptions (calls, Siri) auto-mute; user unmutes manually
+**Dictation Data Flow:**
+1. ConversationDestination creates DictationService per chat via `@StateObject`
+2. AVAudioEngine + SFSpeechRecognizer run continuously while conversation is open
+3. In `idle` state: recognizer watches for trigger words only — everything else ignored
+4. "text" or "text message" -> enters `dictating` state, captures speech-to-text
+5. "voice" or "voice message" -> enters `recording` state, records audio AND transcribes (caption)
+6. 3 seconds of no new recognized words = silence = command ends
+7. For voice: audio trimmed to ~0.5s after last spoken word (removes trailing silence)
+8. Converted OGG + transcript enqueued to MessageSendQueue
+9. Incoming voice messages auto-play when idle, or queue for playback after current command
 
 ## Key Files
 
 | Path | Purpose |
 |------|---------|
-| `Telegrowl/Services/TelegramService.swift` | TDLib client, auth states, chat/message management, photo downloads |
+| `Telegrowl/Services/TelegramService.swift` | TDLib client, auth states, chat/message management, photo downloads, sendTextMessage, sendVoiceMessage (with caption) |
 | `Telegrowl/Services/AudioService.swift` | Recording, playback, silence detection |
 | `Telegrowl/Services/AudioConverter.swift` | OGG/Opus conversion, waveform generation |
-| `Telegrowl/Services/VoiceChatService.swift` | Voice chat: AVAudioEngine VAD, speech recognition, state machine, message queue |
-| `Telegrowl/Services/VoiceCommandService.swift` | Global voice commands: silence-bounded detection, TTS, announcement queue |
-| `Telegrowl/Views/ContentView.swift` | Main UI coordinator, toast overlay, send flow |
-| `Telegrowl/Views/VoiceChatView.swift` | Full-screen voice chat UI with state visuals and mute button |
-| `Telegrowl/Views/ConversationView.swift` | Message bubbles, voice playback |
+| `Telegrowl/Services/DictationService.swift` | Trigger-word detection, speech-to-text dictation, voice recording, audio trimming |
+| `Telegrowl/Services/MessageSendQueue.swift` | Persistent FIFO send queue: text, voice, voice+caption with retry logic |
+| `Telegrowl/Views/ContentView.swift` | Main UI router, NavigationStack, ConversationDestination wrapper, toast/connection overlays |
+| `Telegrowl/Views/ConversationView.swift` | Message bubbles (text, voice, audio, photo, document), waveform display, voice playback |
+| `Telegrowl/Views/InputBarView.swift` | Text field + send button, mic record button, dictation overlay with live transcription |
 | `Telegrowl/Views/ToastView.swift` | Non-blocking toast banners with styles, spinner, retry |
 | `Telegrowl/Views/AvatarView.swift` | Reusable avatar with photo download, minithumbnail blur, initials fallback |
-| `Telegrowl/Views/ChatListView.swift` | Chat list with search |
-| `Telegrowl/Views/AuthView.swift` | Phone → code → 2FA auth flow |
-| `Telegrowl/Views/SettingsView.swift` | App settings (audio, voice chat, voice control, account) |
-| `Telegrowl/Views/RecordButton.swift` | Gesture-based recording button with animations |
+| `Telegrowl/Views/ChatListView.swift` | Chat list with search, @username search |
+| `Telegrowl/Views/AuthView.swift` | Phone -> code -> 2FA auth flow |
+| `Telegrowl/Views/SettingsView.swift` | App settings (audio, account) |
+| `Telegrowl/Views/BubbleShape.swift` | Telegram-style message bubble shape with tails |
+| `Telegrowl/Views/TelegramTheme.swift` | Centralized theme constants (colors, sizes, fonts) |
 | `Telegrowl/App/Config.swift.template` | API credentials + UserDefaults-backed settings (copy to Config.swift) |
 
 ## Implementation Notes
 
-**TelegramService Auth States:** `waitTdlibParameters → waitPhoneNumber → waitCode → waitPassword → ready`
+**TelegramService Auth States:** `waitTdlibParameters -> waitPhoneNumber -> waitCode -> waitPassword -> ready`
 
-**Audio Pipeline:** Records M4A/AAC → converts to OGG/Opus via SwiftOGG → sends with waveform data via `sendVoiceMessage` (async throws). Falls back to sending M4A if conversion fails.
+**Audio Pipeline:** Records M4A/AAC -> converts to OGG/Opus via SwiftOGG -> sends with waveform data via `sendVoiceMessage` (async throws, supports optional caption). Falls back to sending M4A if conversion fails.
 
 **Waveform Generation:** AVFoundation PCM analysis — reads audio into AVAudioPCMBuffer, extracts peak amplitudes into 63 buckets (5-bit values 0-31) for Telegram-compatible waveform display.
 
-**Voice Chat Service:**
-- State machine: `idle → listening → recording → processing → playing`
-- Created per session via `@StateObject` in VoiceChatView (NOT a singleton)
-- AVAudioEngine input tap provides buffers to both VAD and SFSpeechRecognizer simultaneously
+**DictationService:**
+- State machine: `idle -> dictating -> recording -> sending`
+- Created per conversation via `@StateObject` in ConversationDestination (NOT a singleton)
+- AVAudioEngine input tap feeds both SFSpeechRecognizer and optional AVAudioFile simultaneously
 - Audio file writes happen synchronously on the audio thread (AVAudioPCMBuffer is NOT Sendable)
 - `recognitionRequest` marked `nonisolated(unsafe)` — written on MainActor, `append()` called from audio thread (thread-safe)
 - Speech recognition uses 50s rolling restart to avoid Apple's ~60s session limit
-- Max recording duration enforced via Timer
-- Audio interruptions auto-mute; user must manually unmute to resume
+- Trigger words: "text message", "voice message", "text", "voice" (matched longest-first with word boundary awareness)
+- Silence detection based on speech recognizer output stalling — 3s of no new recognized words = end of command (not dB-based)
+- Audio trimming: voice recordings trimmed to ~0.5s after last spoken word via `AudioTrimmer`, removes the 3s silence gap
+- Empty commands (trigger word with no content after) are silently discarded
+- Audio interruptions (calls, Siri) cancel active dictation/recording
+- Incoming voice messages auto-play when idle; queued during active dictation for sequential playback after
 
-**Voice Command Service (Global Voice Control):**
-- Singleton `@MainActor` service, runs from app launch after auth + permissions
-- States: `idle`, `listening`, `paused`, `announcing`, `awaitingResponse`, `transitioning`
-- Silence-bounded command detection: speech surrounded by ≥0.75s silence = command candidate
-- SFSpeechRecognizer (continuous, 50s rolling restart) + keyword matching on transcribed text
-- AVSpeechSynthesizer for TTS announcements ("Message from {name}", "Starting chat with {name}")
-- Announcement queue: incoming messages deduplicated per chatId, processed sequentially with 5s response window
-- Contact matching: voice aliases first (exact, case-insensitive), then chat titles (substring)
-- Service handoff: VoiceCommandService stops engine → ContentView navigates → VoiceChatService starts (one mic owner)
-- Pauses engine during TTS to avoid mic picking up speaker; resumes via AVSpeechSynthesizerDelegate
-- Auto-pauses on app background, restarts on foreground
-- `onAction` callback communicates with ContentView for navigation (openChat, switchChat, closeChat, playMessage, exitApp)
+**MessageSendQueue:**
+- Singleton `@MainActor` service, persisted to `Documents/send_queue/queue.json`
+- Supports three message types: `.text`, `.voice`, `.voiceWithCaption`
+- FIFO processing: sends one message at a time, processes next on success
+- State machine per item: `pending -> sending -> awaitingConfirm -> (success | retryWait -> pending)`
+- On failure: uses TDLib `resendMessages` if `canRetry`, otherwise fresh send with exponential backoff
+- Connection-aware: pauses when disconnected, resumes on `connectionStateReady`
+- Audio files moved into `send_queue/` directory for crash-safe persistence
+- Loads persisted queue on app start, resets in-flight items to pending
 
-**VoiceChatService Extended Commands:**
-- Beyond mute/unmute: "close" (back to contacts), "chat with {name}" (switch chat)
-- Cross-chat announcements: announces messages from other chats during silence gaps (configurable)
-- 5s response window for "play" (read/play message) and "chat" (switch to announced contact)
-- Discards unsent recording when switching chats
+**ConversationDestination:**
+- Wraps ConversationView + InputBarView + DictationService for a single chat
+- Created fresh per `NavigationStack` push via `.navigationDestination(for: Int64.self)`
+- Owns DictationService lifecycle: starts on appear, stops on disappear
+- Manual recording: tap mic -> AudioService records -> AudioConverter -> MessageSendQueue
+- Text send: type in InputBarView -> MessageSendQueue.enqueueText()
 
-**Voice Aliases:**
-- `Config.voiceAliases: [Int64: String]` — UserDefaults-backed, serialized as `[String: String]`
-- Long-press context menu on ChatListView rows: Set/Edit/Clear alias
-- Aliases shown as gray italic subtitle on chat rows
+**InputBarView:**
+- Three visual states: normal (text field + mic/send), manual recording (duration + stop), dictation overlay (pulsing icon + live text + cancel)
+- Normal state: text field with send button (when text present) or mic button (when empty)
+- Dictation overlay shows live transcription and cancel button
 
 **Notifications for Inter-Component Communication:**
-- `.newVoiceMessage` - triggers auto-play (or queues in voice chat)
-- `.newIncomingMessage` - any incoming message (voice or text), used by VoiceCommandService for announcements
-- `.voiceDownloaded` - file ready for playback
-- `.recordingAutoStopped` - silence detection triggered
+- `.newVoiceMessage` - triggers auto-play in DictationService (or queues during active command)
+- `.voiceDownloaded` - file ready for deferred playback
+- `.messageSendSucceeded` - TDLib confirmed delivery, removes item from queue
+- `.messageSendFailed` - TDLib send failed, triggers retry logic
+- `.queueSendSucceeded` - queue item delivered, shows success toast in ContentView
 
-**User Avatars:** `AvatarView` displays real Telegram profile photos in the chat list and settings. Uses a `TelegramPhoto` protocol to unify `ChatPhotoInfo` and `ProfilePhoto`. Three-state fallback: downloaded photo → minithumbnail blur preview → colored initials circle. Downloads via `TelegramService.downloadPhoto(file:)`, relying on TDLib's built-in file cache.
+**User Avatars:** `AvatarView` displays real Telegram profile photos in the chat list and settings. Uses a `TelegramPhoto` protocol to unify `ChatPhotoInfo` and `ProfilePhoto`. Three-state fallback: downloaded photo -> minithumbnail blur preview -> colored initials circle. Downloads via `TelegramService.downloadPhoto(file:)`, relying on TDLib's built-in file cache.
 
-**Toast Status Feedback:** `ToastView` provides non-blocking banners with four styles (info/success/error/warning). `ToastData` supports a loading spinner and an optional Retry button. ContentView manages toast state and auto-dismiss (3s). Replaces the old blocking `.alert("Error")` modal — service errors are funneled via `.onChange(of: telegramService.error)`.
+**Toast Status Feedback:** `ToastView` provides non-blocking banners with four styles (info/success/error/warning). `ToastData` supports a loading spinner and an optional Retry button. ContentView manages toast state and auto-dismiss (3s). Service errors are funneled via `.onChange(of: telegramService.error)`.
 
-**Persistent Settings:** User preferences (auto-play, haptics, silence detection, durations, VAD sensitivity, voice commands) are backed by `UserDefaults` via computed properties on `Config`. Defaults are registered in `TelegrowlApp.init()` via `Config.registerDefaults()`. API credentials and TDLib paths remain compile-time constants.
+**Connection Banner:** `ConnectionBanner` shows a prominent overlay at the top of the screen when disconnected (waiting for network, connecting, updating). Displays queued message count when items are pending.
 
-**Debug Logging:** Uses print() with emoji prefixes (📱 Telegram, 🎙️ Audio, 🔄 Conversion, 📤 Send, 📥 Download, ❌ Error, 🎧 VoiceChat, 🗣️ Speech)
+**Persistent Settings:** User preferences (auto-play, haptics, silence detection, durations) are backed by `UserDefaults` via computed properties on `Config`. Defaults are registered in `TelegrowlApp.init()` via `Config.registerDefaults()`. API credentials and TDLib paths remain compile-time constants. Dictation-specific settings: `speechLocale`, `dictationSilenceTimeout`.
+
+**Debug Logging:** Uses print() with emoji prefixes (📱 Telegram, 🎙️ Audio, 🔄 Conversion, 📤 Send, 📥 Download, ❌ Error, 🗣️ Speech)
 
 ## Config.swift Template
 

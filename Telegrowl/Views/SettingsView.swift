@@ -10,31 +10,13 @@ struct SettingsView: View {
     @State private var silenceDuration = Config.silenceDuration
     @State private var maxRecordingDuration = Config.maxRecordingDuration
 
-    @State private var vadSensitivity = Config.vadSensitivity
-    @State private var muteCommand = Config.muteCommand
-    @State private var unmuteCommand = Config.unmuteCommand
-
     @State private var showingLogoutConfirm = false
-
-    @State private var voiceControlEnabled = Config.voiceControlEnabled
-    @State private var speechLocale = Config.speechLocale
-    @State private var exitCommand = Config.exitCommand
-    @State private var chatWithPrefix = Config.chatWithPrefix
-    @State private var playCommand = Config.playCommand
-    @State private var chatCommand = Config.chatCommand
-    @State private var closeCommand = Config.closeCommand
-    @State private var pauseCommand = Config.pauseCommand
-    @State private var resumeCommand = Config.resumeCommand
-    @State private var readTextMessages = Config.readTextMessages
-    @State private var announceCrossChat = Config.announceCrossChat
 
     var body: some View {
         NavigationView {
             Form {
                 accountSection
                 audioSection
-                voiceChatSection
-                voiceControlSection
                 aboutSection
             }
             .navigationTitle("Settings")
@@ -149,106 +131,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Voice Chat Section
-
-    private var voiceChatSection: some View {
-        Section {
-            HStack {
-                Text("VAD Sensitivity")
-                Spacer()
-                Picker("", selection: $vadSensitivity) {
-                    Text("Low").tag(0)
-                    Text("Medium").tag(1)
-                    Text("High").tag(2)
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 180)
-            }
-
-            HStack {
-                Text("Mute Command")
-                Spacer()
-                TextField("mute", text: $muteCommand)
-                    .multilineTextAlignment(.trailing)
-                    .autocorrectionDisabled()
-                    #if os(iOS)
-                    .textInputAutocapitalization(.never)
-                    #endif
-                    .foregroundColor(TelegramTheme.textSecondary)
-            }
-
-            HStack {
-                Text("Unmute Command")
-                Spacer()
-                TextField("unmute", text: $unmuteCommand)
-                    .multilineTextAlignment(.trailing)
-                    .autocorrectionDisabled()
-                    #if os(iOS)
-                    .textInputAutocapitalization(.never)
-                    #endif
-                    .foregroundColor(TelegramTheme.textSecondary)
-            }
-        } header: {
-            Text("Voice Chat")
-        } footer: {
-            Text("Voice commands to control mute/unmute during voice chat. VAD sensitivity controls how loud you need to speak to trigger recording.")
-        }
-    }
-
-    // MARK: - Voice Control Section
-
-    private var voiceControlSection: some View {
-        Section {
-            Toggle("Voice Control", isOn: $voiceControlEnabled)
-
-            if voiceControlEnabled {
-                HStack {
-                    Text("Language")
-                    Spacer()
-                    Picker("", selection: $speechLocale) {
-                        Text("English").tag("en-US")
-                        Text("Russian").tag("ru-RU")
-                        Text("Spanish").tag("es-ES")
-                        Text("German").tag("de-DE")
-                        Text("French").tag("fr-FR")
-                    }
-                    .pickerStyle(.menu)
-                }
-
-                Toggle("Read Text Messages", isOn: $readTextMessages)
-                Toggle("Announce Cross-Chat", isOn: $announceCrossChat)
-
-                DisclosureGroup("Command Words") {
-                    commandField("Exit", text: $exitCommand)
-                    commandField("Chat with...", text: $chatWithPrefix)
-                    commandField("Play", text: $playCommand)
-                    commandField("Chat", text: $chatCommand)
-                    commandField("Close", text: $closeCommand)
-                    commandField("Pause", text: $pauseCommand)
-                    commandField("Resume", text: $resumeCommand)
-                }
-            }
-        } header: {
-            Text("Voice Control")
-        } footer: {
-            Text("When enabled, the app listens for voice commands from the contacts screen. Commands must be spoken with a brief pause before and after.")
-        }
-    }
-
-    private func commandField(_ label: String, text: Binding<String>) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            TextField(label, text: text)
-                .multilineTextAlignment(.trailing)
-                .autocorrectionDisabled()
-                #if os(iOS)
-                .textInputAutocapitalization(.never)
-                #endif
-                .foregroundColor(TelegramTheme.textSecondary)
-        }
-    }
-
     // MARK: - About Section
 
     private var aboutSection: some View {
@@ -290,20 +172,6 @@ struct SettingsView: View {
         Config.silenceDetection = silenceDetection
         Config.silenceDuration = silenceDuration
         Config.maxRecordingDuration = maxRecordingDuration
-        Config.vadSensitivity = vadSensitivity
-        Config.muteCommand = muteCommand
-        Config.unmuteCommand = unmuteCommand
-        Config.voiceControlEnabled = voiceControlEnabled
-        Config.speechLocale = speechLocale
-        Config.exitCommand = exitCommand
-        Config.chatWithPrefix = chatWithPrefix
-        Config.playCommand = playCommand
-        Config.chatCommand = chatCommand
-        Config.closeCommand = closeCommand
-        Config.pauseCommand = pauseCommand
-        Config.resumeCommand = resumeCommand
-        Config.readTextMessages = readTextMessages
-        Config.announceCrossChat = announceCrossChat
     }
 }
 

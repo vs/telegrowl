@@ -500,7 +500,7 @@ class TelegramService: ObservableObject {
             replyTo: nil,
             topicId: nil
         )
-        let msgId = result?.id ?? 0
+        let msgId = result.id
         print("📤 sendTextMessage returned: id=\(msgId)")
         return msgId
     }

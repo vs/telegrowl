@@ -7,6 +7,7 @@ struct TelegrowlApp: App {
 
     init() {
         Config.registerDefaults()
+        MessageSendQueue.shared.load()
     }
     
     var body: some Scene {

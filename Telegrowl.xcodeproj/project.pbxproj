@@ -19,6 +19,7 @@
 		729D5E8E19AC73F17FE2CF57 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDD19CCEA19643EB97AF41B /* SettingsView.swift */; };
 		79F676128CBD520DF8C450BD /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B187BC3D21B6B451F12DE301 /* AuthView.swift */; };
 		7FC04AA31DC2950F6E59FFAB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37493E4411FCCA57C9E8B462 /* ContentView.swift */; };
+		80EE0E59DD0964AD3C47A7C7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9CE092FA1B540F3BD8AC2502 /* Assets.xcassets */; };
 		81DAEE62B2D1F9FCB52BD756 /* DictationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8624716FAB718125153FAFF3 /* DictationService.swift */; };
 		833FACDC1E7576DB356682A1 /* InputBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0FFEB19B234BC8FB68EA4A6 /* InputBarView.swift */; };
 		86AFAA06F4AC3C239569858F /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD2A9FF4A2807B0FDC5DDFEC /* ConversationView.swift */; };
@@ -39,6 +40,7 @@
 		8624716FAB718125153FAFF3 /* DictationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationService.swift; sourceTree = "<group>"; };
 		8769073548C0A187A242438B /* TelegramTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramTheme.swift; sourceTree = "<group>"; };
 		901242977C0E7792517A34D2 /* TelegramService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramService.swift; sourceTree = "<group>"; };
+		9CE092FA1B540F3BD8AC2502 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9DBA4DC0E031735AAE4DE080 /* TelegrowlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegrowlApp.swift; sourceTree = "<group>"; };
 		9FC20F08ECE62E6E0454EA01 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
 		B0FFEB19B234BC8FB68EA4A6 /* InputBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputBarView.swift; sourceTree = "<group>"; };
@@ -66,6 +68,7 @@
 		0FBAEE4DF9FC5AD4E083083C /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				9CE092FA1B540F3BD8AC2502 /* Assets.xcassets */,
 				5D8B71203896E952930E85A1 /* Info.plist */,
 			);
 			path = Resources;
@@ -144,6 +147,7 @@
 			buildConfigurationList = D05A2D896558DEA0D0297ED2 /* Build configuration list for PBXNativeTarget "Telegrowl" */;
 			buildPhases = (
 				8035FA82CBBD6877368DA9B8 /* Sources */,
+				8169B5EDE39BC9CDA5DB4D57 /* Resources */,
 				0439EAB91948C22F2D2C15FB /* Frameworks */,
 			);
 			buildRules = (
@@ -196,6 +200,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8169B5EDE39BC9CDA5DB4D57 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				80EE0E59DD0964AD3C47A7C7 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8035FA82CBBD6877368DA9B8 /* Sources */ = {

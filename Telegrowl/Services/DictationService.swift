@@ -38,6 +38,8 @@ class DictationService: ObservableObject {
     @Published var state: DictationState = .idle
     @Published var audioLevel: Float = -160.0
     @Published var liveTranscription: String = ""
+    @Published var isListening: Bool = false
+    @Published var lastHeard: String = ""  // last few words heard in idle (for debug feedback)
 
     // MARK: - Private Properties
 
@@ -238,7 +240,15 @@ class DictationService: ObservableObject {
         guard let recognitionRequest else { return }
 
         recognitionRequest.shouldReportPartialResults = true
-        recognitionRequest.requiresOnDeviceRecognition = true
+
+        // Prefer on-device recognition but fall back to server if unavailable
+        if speechRecognizer.supportsOnDeviceRecognition {
+            recognitionRequest.requiresOnDeviceRecognition = true
+            print("🗣️ Dictation: using on-device recognition")
+        } else {
+            recognitionRequest.requiresOnDeviceRecognition = false
+            print("🗣️ Dictation: on-device not available, using server recognition")
+        }
 
         lastFullTranscript = ""
         lastProcessedTranscriptLength = 0
@@ -249,13 +259,18 @@ class DictationService: ObservableObject {
             if let result {
                 let fullText = result.bestTranscription.formattedString
                 Task { @MainActor [weak self] in
-                    self?.handleTranscription(fullText)
+                    guard let self else { return }
+                    if !self.isListening {
+                        self.isListening = true
+                    }
+                    self.handleTranscription(fullText)
                 }
             }
 
             if let error {
-                print("⚠️ Dictation: speech recognition error: \(error)")
+                print("⚠️ Dictation: speech recognition error: \(error.localizedDescription)")
                 Task { @MainActor [weak self] in
+                    self?.isListening = false
                     self?.restartSpeechRecognition()
                 }
             }
@@ -279,6 +294,7 @@ class DictationService: ObservableObject {
         recognitionRequest?.endAudio()
         recognitionRequest = nil
         speechRecognizer = nil
+        isListening = false
     }
 
     private func restartSpeechRecognition() {
@@ -296,6 +312,13 @@ class DictationService: ObservableObject {
 
         switch state {
         case .idle:
+            // Show last few words heard for debugging feedback
+            let words = lowerText.split(separator: " ")
+            let recent = words.suffix(4).joined(separator: " ")
+            if recent != lastHeard {
+                lastHeard = recent
+                print("🗣️ Heard: \"\(recent)\"")
+            }
             detectTrigger(in: lowerText)
 
         case .dictating, .recording:
@@ -340,6 +363,7 @@ class DictationService: ObservableObject {
 
         commandTranscript = initialText
         liveTranscription = initialText
+        lastHeard = ""
         lastNewWordTime = Foundation.Date()
         lastProcessedTranscriptLength = 0
 

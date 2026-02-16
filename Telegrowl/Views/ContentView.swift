@@ -34,6 +34,7 @@ struct ConversationDestination: View {
                 audioLevel: dictationService.audioLevel,
                 isListening: dictationService.isListening,
                 lastHeard: dictationService.lastHeard,
+                permissionDenied: dictationService.permissionDenied,
                 onCancelDictation: { dictationService.cancel() }
             )
         }
@@ -43,9 +44,16 @@ struct ConversationDestination: View {
                 telegramService.selectChat(chat)
             }
             Task {
-                let granted = await DictationService.requestPermissions()
-                if granted {
+                let result = await DictationService.requestPermissions()
+                switch result {
+                case .granted:
                     dictationService.start(chatId: chatId)
+                case .micDenied:
+                    dictationService.permissionDenied = true
+                    print("❌ Microphone permission denied — enable in Settings > Privacy > Microphone")
+                case .speechDenied:
+                    dictationService.permissionDenied = true
+                    print("❌ Speech recognition denied — enable in Settings > Privacy > Speech Recognition")
                 }
             }
         }

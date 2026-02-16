@@ -40,6 +40,7 @@ class DictationService: ObservableObject {
     @Published var liveTranscription: String = ""
     @Published var isListening: Bool = false
     @Published var lastHeard: String = ""  // last few words heard in idle (for debug feedback)
+    @Published var permissionDenied: Bool = false  // true if speech recognition permission was denied
 
     // MARK: - Private Properties
 
@@ -71,6 +72,10 @@ class DictationService: ObservableObject {
     private var silenceCheckTimer: Timer?
     private let commandSilenceTimeout: TimeInterval = 3.0
     private let trailingSilenceTrim: TimeInterval = 0.5
+
+    // Health check — detect stalled recognition
+    private var recognitionStartTime: Foundation.Date?
+    private var healthCheckTimer: Timer?
 
     // Incoming voice playback queue
     private var incomingQueue: [VoiceNote] = []
@@ -114,6 +119,8 @@ class DictationService: ObservableObject {
         print("🎙️ Dictation: stopping")
         silenceCheckTimer?.invalidate()
         silenceCheckTimer = nil
+        healthCheckTimer?.invalidate()
+        healthCheckTimer = nil
         stopEngine()
         discardRecording()
         stopSpeechRecognition()
@@ -142,16 +149,30 @@ class DictationService: ObservableObject {
 
     // MARK: - Permissions
 
-    static func requestPermissions() async -> Bool {
+    enum PermissionResult {
+        case granted
+        case micDenied
+        case speechDenied
+    }
+
+    static func requestPermissions() async -> PermissionResult {
+        let micGranted = await AVAudioApplication.requestRecordPermission()
+        guard micGranted else {
+            print("❌ Dictation: microphone permission denied")
+            return .micDenied
+        }
+
         let speechStatus = await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { status in
                 continuation.resume(returning: status)
             }
         }
-        guard speechStatus == .authorized else { return false }
+        guard speechStatus == .authorized else {
+            print("❌ Dictation: speech recognition permission denied (status: \(speechStatus.rawValue))")
+            return .speechDenied
+        }
 
-        let micStatus = await AVAudioApplication.requestRecordPermission()
-        return micStatus
+        return .granted
     }
 
     // MARK: - Audio Session
@@ -177,11 +198,19 @@ class DictationService: ObservableObject {
         let format = inputNode.outputFormat(forBus: 0)
         sampleRate = format.sampleRate
 
+        print("🎙️ Dictation: input format: \(format.channelCount)ch, \(format.sampleRate)Hz")
+
+        guard format.channelCount > 0, format.sampleRate > 0 else {
+            print("❌ Dictation: invalid input format — audio session may not be ready")
+            return
+        }
+
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             self?.processAudioBuffer(buffer)
         }
 
         do {
+            audioEngine.prepare()
             try audioEngine.start()
             print("🎙️ Dictation: engine started (sampleRate=\(sampleRate))")
         } catch {
@@ -280,6 +309,23 @@ class DictationService: ObservableObject {
         recognitionRestartTimer = Timer.scheduledTimer(withTimeInterval: 50, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.restartSpeechRecognition()
+            }
+        }
+
+        // Health check — if no results after 5s, the recognizer may be stalled
+        recognitionStartTime = Foundation.Date()
+        healthCheckTimer?.invalidate()
+        healthCheckTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if !self.isListening {
+                    print("⚠️ Dictation: no recognition results after 5s — restarting engine + recognizer")
+                    self.stopEngine()
+                    self.stopSpeechRecognition()
+                    self.setupAudioSession()
+                    self.startEngine()
+                    self.startSpeechRecognition()
+                }
             }
         }
 
@@ -663,6 +709,14 @@ class DictationService: ObservableObject {
                         if self.state == .dictating || self.state == .recording {
                             self.cancel()
                         }
+                    } else if type == .ended {
+                        print("🎙️ Dictation: audio interruption ended — restarting")
+                        // Restart the full audio pipeline after interruption
+                        self.stopEngine()
+                        self.stopSpeechRecognition()
+                        self.setupAudioSession()
+                        self.startEngine()
+                        self.startSpeechRecognition()
                     }
                 }
             }

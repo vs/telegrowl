@@ -27,24 +27,8 @@ struct Config {
         static let silenceDuration = "silenceDuration"
         static let silenceThreshold = "silenceThreshold"
         static let maxRecordingDuration = "maxRecordingDuration"
-        static let vadSensitivity = "vadSensitivity"
-        static let muteCommand = "muteCommand"
-        static let unmuteCommand = "unmuteCommand"
-        static let minRecordingDuration = "minRecordingDuration"
-        static let voiceControlEnabled = "voiceControlEnabled"
         static let speechLocale = "speechLocale"
-        static let exitCommand = "exitCommand"
-        static let chatWithPrefix = "chatWithPrefix"
-        static let playCommand = "playCommand"
-        static let chatCommand = "chatCommand"
-        static let closeCommand = "closeCommand"
-        static let pauseCommand = "pauseCommand"
-        static let resumeCommand = "resumeCommand"
-        static let readTextMessages = "readTextMessages"
-        static let announceCrossChat = "announceCrossChat"
-        static let commandSilenceGap = "commandSilenceGap"
-        static let announcementWindow = "announcementWindow"
-        static let voiceAliases = "voiceAliases"
+        static let dictationSilenceTimeout = "dictationSilenceTimeout"
     }
 
     private static let defaults = UserDefaults.standard
@@ -58,23 +42,8 @@ struct Config {
             Keys.silenceDuration: 2.0,
             Keys.silenceThreshold: -45.0,
             Keys.maxRecordingDuration: 60.0,
-            Keys.vadSensitivity: 1,
-            Keys.muteCommand: "mute",
-            Keys.unmuteCommand: "unmute",
-            Keys.minRecordingDuration: 0.5,
-            Keys.voiceControlEnabled: true,
             Keys.speechLocale: "en-US",
-            Keys.exitCommand: "exit",
-            Keys.chatWithPrefix: "chat with",
-            Keys.playCommand: "play",
-            Keys.chatCommand: "chat",
-            Keys.closeCommand: "close",
-            Keys.pauseCommand: "stop listening",
-            Keys.resumeCommand: "start listening",
-            Keys.readTextMessages: true,
-            Keys.announceCrossChat: true,
-            Keys.commandSilenceGap: 0.75,
-            Keys.announcementWindow: 5.0,
+            Keys.dictationSilenceTimeout: 3.0,
         ])
     }
 
@@ -109,134 +78,15 @@ struct Config {
         set { defaults.set(newValue, forKey: Keys.maxRecordingDuration) }
     }
 
-    // MARK: - Voice Chat Settings (Persistent)
-    static var vadSensitivity: Int {
-        get { defaults.integer(forKey: Keys.vadSensitivity) }
-        set { defaults.set(newValue, forKey: Keys.vadSensitivity) }
-    }
-
-    static var vadThreshold: Float {
-        switch vadSensitivity {
-        case 0: return -30.0   // Low — only loud speech
-        case 2: return -50.0   // High — picks up quiet speech
-        default: return -40.0  // Medium
-        }
-    }
-
-    static var muteCommand: String {
-        get { defaults.string(forKey: Keys.muteCommand) ?? "mute" }
-        set { defaults.set(newValue, forKey: Keys.muteCommand) }
-    }
-
-    static var unmuteCommand: String {
-        get { defaults.string(forKey: Keys.unmuteCommand) ?? "unmute" }
-        set { defaults.set(newValue, forKey: Keys.unmuteCommand) }
-    }
-
-    static var minRecordingDuration: TimeInterval {
-        get { defaults.double(forKey: Keys.minRecordingDuration) }
-        set { defaults.set(newValue, forKey: Keys.minRecordingDuration) }
-    }
-
-    // MARK: - Voice Control Settings (Persistent)
-
-    static var voiceControlEnabled: Bool {
-        get { defaults.bool(forKey: Keys.voiceControlEnabled) }
-        set { defaults.set(newValue, forKey: Keys.voiceControlEnabled) }
-    }
+    // MARK: - Dictation Settings (Persistent)
 
     static var speechLocale: String {
         get { defaults.string(forKey: Keys.speechLocale) ?? "en-US" }
         set { defaults.set(newValue, forKey: Keys.speechLocale) }
     }
 
-    static var exitCommand: String {
-        get { defaults.string(forKey: Keys.exitCommand) ?? "exit" }
-        set { defaults.set(newValue, forKey: Keys.exitCommand) }
-    }
-
-    static var chatWithPrefix: String {
-        get { defaults.string(forKey: Keys.chatWithPrefix) ?? "chat with" }
-        set { defaults.set(newValue, forKey: Keys.chatWithPrefix) }
-    }
-
-    static var playCommand: String {
-        get { defaults.string(forKey: Keys.playCommand) ?? "play" }
-        set { defaults.set(newValue, forKey: Keys.playCommand) }
-    }
-
-    static var chatCommand: String {
-        get { defaults.string(forKey: Keys.chatCommand) ?? "chat" }
-        set { defaults.set(newValue, forKey: Keys.chatCommand) }
-    }
-
-    static var closeCommand: String {
-        get { defaults.string(forKey: Keys.closeCommand) ?? "close" }
-        set { defaults.set(newValue, forKey: Keys.closeCommand) }
-    }
-
-    static var pauseCommand: String {
-        get { defaults.string(forKey: Keys.pauseCommand) ?? "stop listening" }
-        set { defaults.set(newValue, forKey: Keys.pauseCommand) }
-    }
-
-    static var resumeCommand: String {
-        get { defaults.string(forKey: Keys.resumeCommand) ?? "start listening" }
-        set { defaults.set(newValue, forKey: Keys.resumeCommand) }
-    }
-
-    static var readTextMessages: Bool {
-        get { defaults.bool(forKey: Keys.readTextMessages) }
-        set { defaults.set(newValue, forKey: Keys.readTextMessages) }
-    }
-
-    static var announceCrossChat: Bool {
-        get { defaults.bool(forKey: Keys.announceCrossChat) }
-        set { defaults.set(newValue, forKey: Keys.announceCrossChat) }
-    }
-
-    static var commandSilenceGap: Double {
-        get { defaults.double(forKey: Keys.commandSilenceGap) }
-        set { defaults.set(newValue, forKey: Keys.commandSilenceGap) }
-    }
-
-    static var announcementWindow: Double {
-        get { defaults.double(forKey: Keys.announcementWindow) }
-        set { defaults.set(newValue, forKey: Keys.announcementWindow) }
-    }
-
-    // MARK: - Voice Aliases
-
-    static var voiceAliases: [Int64: String] {
-        get {
-            guard let dict = defaults.dictionary(forKey: Keys.voiceAliases) as? [String: String] else { return [:] }
-            var result: [Int64: String] = [:]
-            for (key, value) in dict {
-                if let id = Int64(key) {
-                    result[id] = value
-                }
-            }
-            return result
-        }
-        set {
-            let dict = Dictionary(uniqueKeysWithValues: newValue.map { (String($0.key), $0.value) })
-            defaults.set(dict, forKey: Keys.voiceAliases)
-        }
-    }
-
-    static func setVoiceAlias(chatId: Int64, alias: String) {
-        var aliases = voiceAliases
-        aliases[chatId] = alias
-        voiceAliases = aliases
-    }
-
-    static func removeVoiceAlias(chatId: Int64) {
-        var aliases = voiceAliases
-        aliases.removeValue(forKey: chatId)
-        voiceAliases = aliases
-    }
-
-    static func voiceAlias(for chatId: Int64) -> String? {
-        voiceAliases[chatId]
+    static var dictationSilenceTimeout: Double {
+        get { defaults.double(forKey: Keys.dictationSilenceTimeout) }
+        set { defaults.set(newValue, forKey: Keys.dictationSilenceTimeout) }
     }
 }

@@ -2,14 +2,24 @@ import Foundation
 import Combine
 import TDLibKit
 
+// MARK: - Queue Message Type
+
+enum QueueMessageType: String, Codable {
+    case voice              // Voice-only (existing behavior)
+    case voiceWithCaption   // Voice + text caption
+    case text               // Text-only message
+}
+
 // MARK: - Queue Item
 
 struct QueueItem: Codable, Identifiable {
     let id: UUID
     let chatId: Int64
-    let audioFileName: String       // filename within send_queue/ dir
-    let duration: Int
+    let messageType: QueueMessageType
+    let audioFileName: String?      // filename within send_queue/ dir (nil for text messages)
+    let duration: Int?              // audio duration in seconds (nil for text messages)
     let waveformBase64: String?     // Data as base64 for JSON persistence
+    let caption: String?            // text content for text messages, or voice caption
     let enqueuedAt: Double          // timeIntervalSince1970
     var localMessageId: Int64?      // TDLib temp ID (set after sendMessage returns)
     var retryCount: Int = 0
@@ -18,7 +28,7 @@ struct QueueItem: Codable, Identifiable {
 
     enum ItemState: String, Codable {
         case pending           // Ready to send
-        case sending           // sendVoiceMessage in flight
+        case sending           // sendVoiceMessage/sendTextMessage in flight
         case awaitingConfirm   // TDLib accepted, waiting for success/failure update
         case retryWait         // Backoff timer active
     }
@@ -28,8 +38,21 @@ struct QueueItem: Codable, Identifiable {
         return Data(base64Encoded: base64)
     }
 
-    var audioURL: URL {
-        MessageSendQueue.queueDirectory.appendingPathComponent(audioFileName)
+    var audioURL: URL? {
+        guard let audioFileName else { return nil }
+        return MessageSendQueue.queueDirectory.appendingPathComponent(audioFileName)
+    }
+
+    /// Display label for logging
+    var logLabel: String {
+        switch messageType {
+        case .text:
+            return "text(\(caption?.prefix(30) ?? ""))"
+        case .voice:
+            return audioFileName ?? "voice"
+        case .voiceWithCaption:
+            return "\(audioFileName ?? "voice")+caption"
+        }
     }
 }
 
@@ -69,7 +92,13 @@ class MessageSendQueue: ObservableObject {
 
     // MARK: - Enqueue
 
+    /// Enqueue a voice-only message (backward-compatible with existing callers)
     func enqueue(audioURL: URL, duration: Int, waveform: Data?, chatId: Int64) {
+        enqueueVoice(audioURL: audioURL, duration: duration, waveform: waveform, caption: nil, chatId: chatId)
+    }
+
+    /// Enqueue a voice message with optional caption
+    func enqueueVoice(audioURL: URL, duration: Int, waveform: Data?, caption: String?, chatId: Int64) {
         ensureDirectory()
 
         // Move audio file into send_queue/ directory
@@ -90,18 +119,41 @@ class MessageSendQueue: ObservableObject {
             }
         }
 
+        let messageType: QueueMessageType = (caption != nil) ? .voiceWithCaption : .voice
+
         let item = QueueItem(
             id: UUID(),
             chatId: chatId,
+            messageType: messageType,
             audioFileName: fileName,
             duration: duration,
             waveformBase64: waveform?.base64EncodedString(),
+            caption: caption,
             enqueuedAt: Foundation.Date().timeIntervalSince1970
         )
 
         items.append(item)
         persist()
-        print("📤 SendQueue: enqueued \(fileName) for chat \(chatId) (\(items.count) in queue)")
+        print("📤 SendQueue: enqueued \(item.logLabel) for chat \(chatId) (\(items.count) in queue)")
+        processNext()
+    }
+
+    /// Enqueue a text-only message
+    func enqueueText(text: String, chatId: Int64) {
+        let item = QueueItem(
+            id: UUID(),
+            chatId: chatId,
+            messageType: .text,
+            audioFileName: nil,
+            duration: nil,
+            waveformBase64: nil,
+            caption: text,
+            enqueuedAt: Foundation.Date().timeIntervalSince1970
+        )
+
+        items.append(item)
+        persist()
+        print("📤 SendQueue: enqueued \(item.logLabel) for chat \(chatId) (\(items.count) in queue)")
         processNext()
     }
 
@@ -128,16 +180,51 @@ class MessageSendQueue: ObservableObject {
         persist()
 
         let item = items[index]
-        print("📤 SendQueue: sending \(item.audioFileName) (attempt \(item.retryCount + 1))")
+        print("📤 SendQueue: sending \(item.logLabel) (attempt \(item.retryCount + 1))")
 
         Task {
             do {
-                let messageId = try await TelegramService.shared.sendVoiceMessage(
-                    audioURL: item.audioURL,
-                    duration: item.duration,
-                    waveform: item.waveform,
-                    chatId: item.chatId
-                )
+                let messageId: Int64
+
+                switch item.messageType {
+                case .text:
+                    guard let text = item.caption else {
+                        print("❌ SendQueue: text item has no caption, dropping")
+                        handleSendError(itemId: item.id, error: "Text item missing caption")
+                        return
+                    }
+                    messageId = try await TelegramService.shared.sendTextMessage(
+                        text: text,
+                        chatId: item.chatId
+                    )
+
+                case .voice:
+                    guard let audioURL = item.audioURL, let duration = item.duration else {
+                        print("❌ SendQueue: voice item missing audio/duration, dropping")
+                        handleSendError(itemId: item.id, error: "Voice item missing audio data")
+                        return
+                    }
+                    messageId = try await TelegramService.shared.sendVoiceMessage(
+                        audioURL: audioURL,
+                        duration: duration,
+                        waveform: item.waveform,
+                        chatId: item.chatId
+                    )
+
+                case .voiceWithCaption:
+                    guard let audioURL = item.audioURL, let duration = item.duration else {
+                        print("❌ SendQueue: voiceWithCaption item missing audio/duration, dropping")
+                        handleSendError(itemId: item.id, error: "Voice item missing audio data")
+                        return
+                    }
+                    messageId = try await TelegramService.shared.sendVoiceMessage(
+                        audioURL: audioURL,
+                        duration: duration,
+                        waveform: item.waveform,
+                        caption: item.caption,
+                        chatId: item.chatId
+                    )
+                }
 
                 // Store the local message ID for matching send success/failure updates
                 if let idx = items.firstIndex(where: { $0.id == item.id }) {
@@ -147,7 +234,7 @@ class MessageSendQueue: ObservableObject {
                     print("📤 SendQueue: awaiting confirm for localId=\(messageId)")
                 }
             } catch {
-                print("❌ SendQueue: sendVoiceMessage threw: \(error)")
+                print("❌ SendQueue: send threw: \(error)")
                 handleSendError(itemId: item.id, error: error.localizedDescription)
             }
         }
@@ -161,10 +248,12 @@ class MessageSendQueue: ObservableObject {
         }
 
         let item = items[index]
-        print("📤 SendQueue: send succeeded for \(item.audioFileName)")
+        print("📤 SendQueue: send succeeded for \(item.logLabel)")
 
-        // Delete audio file from queue directory
-        try? FileManager.default.removeItem(at: item.audioURL)
+        // Delete audio file from queue directory (only for voice items)
+        if let audioURL = item.audioURL {
+            try? FileManager.default.removeItem(at: audioURL)
+        }
 
         items.remove(at: index)
         persist()
@@ -181,7 +270,7 @@ class MessageSendQueue: ObservableObject {
         }
 
         let item = items[index]
-        print("❌ SendQueue: send failed for \(item.audioFileName): \(errorMessage)")
+        print("❌ SendQueue: send failed for \(item.logLabel): \(errorMessage)")
 
         // Try to extract canRetry/retryAfter from the TDLib message sending state
         var canRetry = false
@@ -343,13 +432,23 @@ class MessageSendQueue: ObservableObject {
                 }
             }
 
-            // Remove items whose audio files no longer exist
+            // Remove items whose audio files no longer exist (text items always pass)
             loadedItems = loadedItems.filter { item in
-                let exists = FileManager.default.fileExists(atPath: item.audioURL.path)
-                if !exists {
-                    print("⚠️ SendQueue: audio file missing for \(item.audioFileName), dropping")
+                switch item.messageType {
+                case .text:
+                    // Text items have no audio file to check
+                    return true
+                case .voice, .voiceWithCaption:
+                    guard let audioURL = item.audioURL else {
+                        print("⚠️ SendQueue: voice item missing audioFileName, dropping")
+                        return false
+                    }
+                    let exists = FileManager.default.fileExists(atPath: audioURL.path)
+                    if !exists {
+                        print("⚠️ SendQueue: audio file missing for \(item.audioFileName ?? "unknown"), dropping")
+                    }
+                    return exists
                 }
-                return exists
             }
 
             items = loadedItems

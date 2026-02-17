@@ -427,7 +427,7 @@ class TelegramService: ObservableObject {
     }
 
     @discardableResult
-    func sendVoiceMessage(audioURL: URL, duration: Int, waveform: Data?, chatId: Int64? = nil) async throws -> Int64 {
+    func sendVoiceMessage(audioURL: URL, duration: Int, waveform: Data?, caption: String? = nil, chatId: Int64? = nil) async throws -> Int64 {
         let targetChatId = chatId ?? selectedChat?.id
         guard let targetChatId else {
             print("❌ No chat selected")
@@ -445,9 +445,10 @@ class TelegramService: ObservableObject {
         print("   Exists: \(FileManager.default.fileExists(atPath: filePath))")
 
         let inputFile = InputFile.inputFileLocal(InputFileLocal(path: filePath))
+        let captionText: FormattedText? = caption.map { FormattedText(entities: [], text: $0) }
         let voiceNote = InputMessageContent.inputMessageVoiceNote(
             InputMessageVoiceNote(
-                caption: nil,
+                caption: captionText,
                 duration: duration,
                 selfDestructType: nil,
                 voiceNote: inputFile,
@@ -471,6 +472,37 @@ class TelegramService: ObservableObject {
             print("📤 sendMessage threw: \(error)")
             throw error
         }
+    }
+
+    @discardableResult
+    func sendTextMessage(text: String, chatId: Int64) async throws -> Int64 {
+        guard let api else {
+            print("❌ TDLib client not ready")
+            throw TelegramServiceError.notConnected
+        }
+
+        print("📤 Sending text message to chat \(chatId)")
+
+        let formattedText = FormattedText(entities: [], text: text)
+        let content = InputMessageContent.inputMessageText(
+            InputMessageText(
+                clearDraft: true,
+                linkPreviewOptions: nil,
+                text: formattedText
+            )
+        )
+
+        let result = try await api.sendMessage(
+            chatId: chatId,
+            inputMessageContent: content,
+            options: nil,
+            replyMarkup: nil,
+            replyTo: nil,
+            topicId: nil
+        )
+        let msgId = result?.id ?? 0
+        print("📤 sendTextMessage returned: id=\(msgId)")
+        return msgId
     }
 
     private func handleNewMessage(_ message: Message) {

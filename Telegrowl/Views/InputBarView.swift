@@ -1,23 +1,31 @@
 import SwiftUI
 
 struct InputBarView: View {
+    // Text input
+    @Binding var messageText: String
+    let onSendText: () -> Void
+    let onAttachment: () -> Void
+
+    // Manual recording
     let isRecording: Bool
-    let audioLevel: Float
     let recordingDuration: TimeInterval
     let onStartRecording: () -> Void
     let onStopRecording: () -> Void
 
-    @State private var dragOffset: CGFloat = 0
-    @State private var isCancelled = false
-
-    private let cancelThreshold: CGFloat = -120
+    // Dictation overlay
+    let dictationState: DictationState
+    let liveTranscription: String
+    let audioLevel: Float
+    let onCancelDictation: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             Divider()
 
-            if isRecording {
-                recordingOverlay
+            if dictationState == .dictating || dictationState == .recording {
+                dictationOverlay
+            } else if isRecording {
+                manualRecordingBar
             } else {
                 normalBar
             }
@@ -28,20 +36,17 @@ struct InputBarView: View {
     // MARK: - Normal State
 
     private var normalBar: some View {
-        HStack(spacing: 12) {
-            // Attachment button
-            Button(action: {}) {
+        HStack(spacing: 8) {
+            Button(action: onAttachment) {
                 Image(systemName: "paperclip")
                     .font(.system(size: 22))
                     .foregroundColor(TelegramTheme.textSecondary)
             }
 
-            // Message placeholder
-            Text("Message")
+            TextField("Message", text: $messageText, axis: .vertical)
                 .font(.system(size: 17))
-                .foregroundColor(Color(hex: "C7C7CC"))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 8)
+                .lineLimit(1...5)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(Color.white)
                 .clipShape(RoundedRectangle(cornerRadius: 18))
@@ -50,43 +55,28 @@ struct InputBarView: View {
                         .stroke(TelegramTheme.inputBarBorder, lineWidth: 0.5)
                 )
 
-            // Mic button
-            ZStack {
-                Image(systemName: "mic.fill")
-                    .font(.system(size: 22))
-                    .foregroundColor(TelegramTheme.textSecondary)
+            if messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Button(action: onStartRecording) {
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(TelegramTheme.textSecondary)
+                }
+            } else {
+                Button(action: onSendText) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 30))
+                        .foregroundColor(TelegramTheme.accent)
+                }
             }
-            .frame(width: 33, height: 33)
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        if !isRecording {
-                            onStartRecording()
-                        }
-                        dragOffset = value.translation.width
-                        if dragOffset < cancelThreshold {
-                            isCancelled = true
-                        }
-                    }
-                    .onEnded { _ in
-                        if isCancelled {
-                            isCancelled = false
-                            dragOffset = 0
-                        }
-                        onStopRecording()
-                        dragOffset = 0
-                    }
-            )
         }
         .padding(.horizontal, 8)
-        .frame(height: TelegramTheme.inputBarHeight)
+        .frame(minHeight: TelegramTheme.inputBarHeight)
     }
 
-    // MARK: - Recording Overlay
+    // MARK: - Manual Recording
 
-    private var recordingOverlay: some View {
+    private var manualRecordingBar: some View {
         HStack(spacing: 12) {
-            // Red recording dot + timer
             HStack(spacing: 6) {
                 Circle()
                     .fill(TelegramTheme.recordingRed)
@@ -99,43 +89,50 @@ struct InputBarView: View {
 
             Spacer()
 
-            // Slide to cancel
-            HStack(spacing: 4) {
-                Image(systemName: "chevron.left")
-                    .font(.caption)
-                Text("Slide to cancel")
+            Button(action: onStopRecording) {
+                Image(systemName: "stop.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(TelegramTheme.recordingRed)
             }
-            .foregroundColor(TelegramTheme.textSecondary)
-            .offset(x: min(0, dragOffset * 0.5))
-            .opacity(max(0, 1 + Double(dragOffset) / Double(abs(cancelThreshold))))
-
-            Spacer()
-
-            // Mic icon (drag handle)
-            Image(systemName: "mic.fill")
-                .font(.system(size: 22))
-                .foregroundColor(TelegramTheme.accent)
-                .offset(x: min(0, dragOffset))
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            dragOffset = value.translation.width
-                            if dragOffset < cancelThreshold {
-                                isCancelled = true
-                            }
-                        }
-                        .onEnded { _ in
-                            if isCancelled {
-                                isCancelled = false
-                                dragOffset = 0
-                            }
-                            onStopRecording()
-                            dragOffset = 0
-                        }
-                )
         }
         .padding(.horizontal, 12)
         .frame(height: TelegramTheme.inputBarHeight)
+    }
+
+    // MARK: - Dictation Overlay
+
+    private var dictationOverlay: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                // Pulsing mic icon
+                Image(systemName: dictationState == .recording ? "waveform" : "mic.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(TelegramTheme.recordingRed)
+                    .symbolEffect(.pulse)
+
+                Text(dictationState == .recording ? "Recording voice..." : "Dictating...")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(TelegramTheme.textPrimary)
+
+                Spacer()
+
+                Button(action: onCancelDictation) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(TelegramTheme.textSecondary)
+                }
+            }
+
+            if !liveTranscription.isEmpty {
+                Text(liveTranscription)
+                    .font(.system(size: 15))
+                    .foregroundColor(TelegramTheme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(3)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {

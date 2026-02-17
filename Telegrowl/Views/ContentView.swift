@@ -1,11 +1,138 @@
 import SwiftUI
 import TDLibKit
-import AVFoundation
+
+// MARK: - Conversation Destination
+
+/// Wraps ConversationView + InputBarView + DictationService for a single chat.
+/// Created fresh per navigation push via `.navigationDestination`.
+struct ConversationDestination: View {
+    let chatId: Int64
+
+    @EnvironmentObject var telegramService: TelegramService
+    @EnvironmentObject var audioService: AudioService
+    @StateObject private var dictationService = DictationService()
+
+    @State private var messageText = ""
+    @State private var isManualRecording = false
+    @State private var recordingDuration: TimeInterval = 0
+    @State private var recordingTimer: Timer?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ConversationView(chatId: chatId)
+
+            InputBarView(
+                messageText: $messageText,
+                onSendText: sendTextMessage,
+                onAttachment: {},
+                isRecording: isManualRecording,
+                recordingDuration: recordingDuration,
+                onStartRecording: startManualRecording,
+                onStopRecording: stopManualRecording,
+                dictationState: dictationService.state,
+                liveTranscription: dictationService.liveTranscription,
+                audioLevel: dictationService.audioLevel,
+                onCancelDictation: { dictationService.cancel() }
+            )
+        }
+        .onAppear {
+            if telegramService.selectedChat?.id != chatId,
+               let chat = telegramService.chats.first(where: { $0.id == chatId }) {
+                telegramService.selectChat(chat)
+            }
+            Task {
+                let granted = await DictationService.requestPermissions()
+                if granted {
+                    dictationService.start(chatId: chatId)
+                }
+            }
+        }
+        .onDisappear {
+            dictationService.stop()
+            if isManualRecording {
+                _ = audioService.stopRecording()
+                isManualRecording = false
+            }
+        }
+    }
+
+    // MARK: - Text Send
+
+    private func sendTextMessage() {
+        let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        messageText = ""
+        MessageSendQueue.shared.enqueueText(text: text, chatId: chatId)
+    }
+
+    // MARK: - Manual Recording
+
+    private func startManualRecording() {
+        audioService.startRecording()
+        isManualRecording = true
+        recordingDuration = 0
+
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [self] _ in
+            Task { @MainActor in
+                recordingDuration = audioService.recordingDuration
+            }
+        }
+    }
+
+    private func stopManualRecording() {
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+
+        guard let m4aURL = audioService.stopRecording() else {
+            isManualRecording = false
+            return
+        }
+
+        let duration = Int(audioService.recordingDuration)
+        isManualRecording = false
+
+        guard duration > 0 else {
+            print("⚠️ Recording too short, not sending")
+            return
+        }
+
+        let targetChatId = chatId
+
+        Task.detached {
+            var audioURL = m4aURL
+            var waveform: Data? = nil
+
+            do {
+                let (oggURL, wf) = try await AudioConverter.convertToOpus(inputURL: m4aURL)
+                audioURL = oggURL
+                waveform = wf
+            } catch {
+                print("❌ Conversion failed: \(error), sending M4A as fallback")
+            }
+
+            await MainActor.run {
+                MessageSendQueue.shared.enqueueVoice(
+                    audioURL: audioURL,
+                    duration: duration,
+                    waveform: waveform,
+                    caption: nil,
+                    chatId: targetChatId
+                )
+
+                // Delete the M4A source if we converted to OGG (enqueue moved the OGG)
+                if audioURL != m4aURL {
+                    try? FileManager.default.removeItem(at: m4aURL)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Content View
 
 struct ContentView: View {
     @EnvironmentObject var telegramService: TelegramService
     @EnvironmentObject var audioService: AudioService
-    @StateObject private var voiceCommandService = VoiceCommandService.shared
 
     @State private var navigationPath = NavigationPath()
     @State private var showingAuth = false
@@ -48,37 +175,13 @@ struct ContentView: View {
         .sheet(isPresented: $showingAuth) {
             AuthView()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .newVoiceMessage)) { notification in
-            handleNewVoiceMessage(notification)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .voiceDownloaded)) { notification in
-            handleDeferredVoiceDownload(notification)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .recordingAutoStopped)) { _ in
-            sendRecording()
-        }
         .onReceive(NotificationCenter.default.publisher(for: .queueSendSucceeded)) { _ in
-            showToast(ToastData(message: "Voice message sent", style: .success, icon: "checkmark.circle.fill"))
+            showToast(ToastData(message: "Message sent", style: .success, icon: "checkmark.circle.fill"))
         }
         .onChange(of: telegramService.error?.localizedDescription) {
             if let error = telegramService.error {
                 showToast(ToastData(message: error.localizedDescription, style: .error, icon: "exclamationmark.triangle.fill"))
                 telegramService.error = nil
-            }
-        }
-        .task {
-            if telegramService.isAuthenticated {
-                await startVoiceControlIfNeeded()
-            }
-        }
-        .onChange(of: telegramService.isAuthenticated) { _, isAuth in
-            if isAuth {
-                Task { await startVoiceControlIfNeeded() }
-            }
-        }
-        .onChange(of: navigationPath.count) { oldCount, newCount in
-            if newCount == 0 && oldCount > 0 {
-                voiceCommandService.onChatClosed()
             }
         }
     }
@@ -95,16 +198,6 @@ struct ContentView: View {
                 .navigationDestination(for: Int64.self) { chatId in
                     conversationDestination(chatId: chatId)
                 }
-                .navigationDestination(for: String.self) { value in
-                    if value.hasPrefix("voiceChat-"),
-                       let chatId = Int64(value.replacingOccurrences(of: "voiceChat-", with: "")),
-                       let chat = telegramService.chats.first(where: { $0.id == chatId }) {
-                        VoiceChatView(chatId: chatId, chatTitle: chat.title) { action in
-                            handleVoiceAction(action, telegramService: telegramService)
-                        }
-                        .navigationBarHidden(true)
-                    }
-                }
         }
         .tint(TelegramTheme.accent)
         .onChange(of: telegramService.selectedChat?.id) { _, newChatId in
@@ -119,36 +212,13 @@ struct ContentView: View {
 
     @ViewBuilder
     private func conversationDestination(chatId: Int64) -> some View {
-        VStack(spacing: 0) {
-            ConversationView(chatId: chatId)
-
-            InputBarView(
-                isRecording: audioService.isRecording,
-                audioLevel: audioService.audioLevel,
-                recordingDuration: audioService.recordingDuration,
-                onStartRecording: { audioService.startRecording() },
-                onStopRecording: { sendRecording() }
-            )
-        }
-        .onAppear {
-            if telegramService.selectedChat?.id != chatId,
-               let chat = telegramService.chats.first(where: { $0.id == chatId }) {
-                telegramService.selectChat(chat)
-            }
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                chatToolbarTitle
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink(value: "voiceChat-\(chatId)") {
-                    Image(systemName: "waveform.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(TelegramTheme.accent)
+        ConversationDestination(chatId: chatId)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    chatToolbarTitle
                 }
             }
-        }
     }
 
     private var chatToolbarTitle: some View {
@@ -217,83 +287,6 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Voice Control
-
-    private func startVoiceControlIfNeeded() async {
-        guard Config.voiceControlEnabled else { return }
-        let granted = await VoiceCommandService.requestPermissions()
-        if granted {
-            voiceCommandService.onAction = { action in
-                handleVoiceAction(action, telegramService: telegramService)
-            }
-            voiceCommandService.start()
-        }
-    }
-
-    private func handleVoiceAction(_ action: VoiceCommandAction, telegramService: TelegramService?) {
-        switch action {
-        case .openChat(let chatId, _):
-            voiceCommandService.onChatOpening()
-            if let chat = telegramService?.chats.first(where: { $0.id == chatId }) {
-                telegramService?.selectChat(chat)
-            }
-            navigationPath = NavigationPath()
-            navigationPath.append(chatId)
-            navigationPath.append("voiceChat-\(chatId)")
-
-        case .switchChat(let chatId, let chatTitle):
-            voiceCommandService.onChatOpening()
-            voiceCommandService.stop()
-            let synth = AVSpeechSynthesizer()
-            let utterance = AVSpeechUtterance(string: "Starting chat with \(chatTitle)")
-            utterance.voice = AVSpeechSynthesisVoice(language: Config.speechLocale)
-            synth.speak(utterance)
-            Task {
-                try? await Task.sleep(for: .seconds(2))
-                if let chat = telegramService?.chats.first(where: { $0.id == chatId }) {
-                    telegramService?.selectChat(chat)
-                }
-                navigationPath = NavigationPath()
-                navigationPath.append(chatId)
-                navigationPath.append("voiceChat-\(chatId)")
-            }
-
-        case .closeChat:
-            navigationPath = NavigationPath()
-            voiceCommandService.onChatClosed()
-
-        case .playMessage(let message, _):
-            playAnnouncedMessage(message)
-
-        case .exitApp:
-            voiceCommandService.stop()
-            #if canImport(UIKit)
-            UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
-            #endif
-        }
-    }
-
-    private func playAnnouncedMessage(_ message: Message) {
-        switch message.content {
-        case .messageVoiceNote(let voiceContent):
-            TelegramService.shared.downloadVoice(voiceContent.voiceNote) { url in
-                if let url {
-                    AudioService.shared.play(url: url)
-                }
-            }
-
-        case .messageText(let text):
-            if Config.readTextMessages {
-                let utterance = AVSpeechUtterance(string: text.text.text)
-                utterance.voice = AVSpeechSynthesisVoice(language: Config.speechLocale)
-                AVSpeechSynthesizer().speak(utterance)
-            }
-
-        default:
-            break
-        }
-    }
-
     // MARK: - Helpers
 
     private var isDisconnected: Bool {
@@ -321,54 +314,7 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Actions
-
-    private func sendRecording() {
-        guard let m4aURL = audioService.stopRecording() else { return }
-
-        let duration = Int(audioService.recordingDuration)
-        guard duration > 0 else {
-            print("⚠️ Recording too short, not sending")
-            return
-        }
-
-        guard let chatId = telegramService.selectedChat?.id else {
-            print("❌ No chat selected")
-            showToast(ToastData(message: "No chat selected", style: .warning, icon: "exclamationmark.triangle.fill"))
-            return
-        }
-
-        showToast(ToastData(message: "Converting audio...", style: .info, icon: "waveform", isLoading: true), autoDismiss: false)
-
-        Task.detached {
-            var audioURL = m4aURL
-            var waveform: Data? = nil
-
-            do {
-                let (oggURL, wf) = try await AudioConverter.convertToOpus(inputURL: m4aURL)
-                audioURL = oggURL
-                waveform = wf
-            } catch {
-                print("❌ Conversion failed: \(error), sending M4A as fallback")
-            }
-
-            await MainActor.run {
-                sendQueue.enqueue(audioURL: audioURL, duration: duration, waveform: waveform, chatId: chatId)
-
-                // Delete the M4A source if we converted to OGG (enqueue moved the OGG)
-                if audioURL != m4aURL {
-                    try? FileManager.default.removeItem(at: m4aURL)
-                }
-
-                let queueCount = sendQueue.pendingCount
-                if queueCount > 1 {
-                    showToast(ToastData(message: "Queued (\(queueCount) pending)", style: .info, icon: "tray.full"))
-                } else {
-                    showToast(ToastData(message: "Sending...", style: .info, icon: "paperplane", isLoading: true))
-                }
-            }
-        }
-    }
+    // MARK: - Toast
 
     private func showToast(_ toast: ToastData, autoDismiss: Bool = true) {
         toastDismissTask?.cancel()
@@ -388,34 +334,6 @@ struct ContentView: View {
         toastDismissTask?.cancel()
         toastDismissTask = nil
         currentToast = nil
-    }
-
-    private func handleNewVoiceMessage(_ notification: Foundation.Notification) {
-        guard Config.autoPlayResponses else { return }
-
-        if let message = notification.object as? Message,
-           !message.isOutgoing,
-           case .messageVoiceNote(let voiceContent) = message.content {
-
-            telegramService.downloadVoice(voiceContent.voiceNote) { url in
-                if let url = url {
-                    audioService.play(url: url)
-                }
-                // If url is nil, TelegramService started an async download.
-                // handleDeferredVoiceDownload will auto-play when it completes.
-            }
-        }
-    }
-
-    /// Auto-play voice messages that were deferred due to connectivity issues.
-    private func handleDeferredVoiceDownload(_ notification: Foundation.Notification) {
-        guard Config.autoPlayResponses else { return }
-        guard !audioService.isPlaying else { return }
-
-        if let url = notification.userInfo?["url"] as? URL {
-            print("📥 Playing deferred voice download: \(url.lastPathComponent)")
-            audioService.play(url: url)
-        }
     }
 }
 

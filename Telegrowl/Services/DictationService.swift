@@ -198,22 +198,36 @@ class DictationService: ObservableObject {
 
     private func startEngine() {
         let inputNode = audioEngine.inputNode
-        let format = inputNode.outputFormat(forBus: 0)
-        sampleRate = format.sampleRate
 
-        print("🎙️ Dictation: input format: \(format.channelCount)ch, \(format.sampleRate)Hz")
+        // Prepare first so the engine resolves the actual hardware configuration
+        audioEngine.prepare()
 
-        guard format.channelCount > 0, format.sampleRate > 0 else {
-            print("❌ Dictation: invalid input format — audio session may not be ready")
+        // Use the hardware input format — NOT outputFormat, which may report a different
+        // sample rate that Core Audio can't bridge (e.g. 48kHz client vs 24kHz Bluetooth HFP)
+        let hwFormat = inputNode.inputFormat(forBus: 0)
+        sampleRate = hwFormat.sampleRate
+
+        print("🎙️ Dictation: hardware format: \(hwFormat.channelCount)ch, \(hwFormat.sampleRate)Hz")
+
+        guard hwFormat.channelCount > 0, hwFormat.sampleRate > 0 else {
+            print("❌ Dictation: invalid hardware format — audio session may not be ready")
             return
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+        // Create a mono format at the hardware's actual sample rate
+        guard let tapFormat = AVAudioFormat(
+            standardFormatWithSampleRate: hwFormat.sampleRate,
+            channels: 1
+        ) else {
+            print("❌ Dictation: failed to create tap format")
+            return
+        }
+
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: tapFormat) { [weak self] buffer, _ in
             self?.processAudioBuffer(buffer)
         }
 
         do {
-            audioEngine.prepare()
             try audioEngine.start()
             print("🎙️ Dictation: engine started (sampleRate=\(sampleRate))")
         } catch {

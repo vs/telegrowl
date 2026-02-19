@@ -18,6 +18,7 @@ struct InputBarView: View {
     let audioLevel: Float
     let isListening: Bool
     let lastHeard: String
+    let permissionDenied: Bool
     let onCancelDictation: () -> Void
 
     var body: some View {
@@ -39,8 +40,22 @@ struct InputBarView: View {
 
     private var normalBar: some View {
         VStack(spacing: 0) {
+            // Permission denied warning
+            if permissionDenied {
+                HStack(spacing: 4) {
+                    Image(systemName: "mic.slash")
+                        .font(.system(size: 10))
+                    Text("Speech recognition denied — enable in Settings")
+                        .font(.system(size: 11))
+                        .lineLimit(1)
+                }
+                .foregroundColor(.red.opacity(0.7))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
+            }
             // Listening indicator — shows what the recognizer hears
-            if isListening && !lastHeard.isEmpty {
+            else if isListening && !lastHeard.isEmpty {
                 HStack(spacing: 4) {
                     Image(systemName: "ear")
                         .font(.system(size: 10))

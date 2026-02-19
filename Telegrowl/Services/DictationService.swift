@@ -77,6 +77,9 @@ class DictationService: ObservableObject {
     private var recognitionStartTime: Foundation.Date?
     private var healthCheckTimer: Timer?
 
+    // Restart debounce — prevents cascade from cancellation errors
+    private var lastRestartTime: Foundation.Date?
+
     // Incoming voice playback queue
     private var incomingQueue: [VoiceNote] = []
     private var playbackCancellable: AnyCancellable?
@@ -287,16 +290,29 @@ class DictationService: ObservableObject {
 
             if let result {
                 let fullText = result.bestTranscription.formattedString
+                let isFinal = result.isFinal
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     if !self.isListening {
                         self.isListening = true
                     }
                     self.handleTranscription(fullText)
+
+                    // Recognition session ended (pause detected or limit reached) — restart immediately
+                    if isFinal {
+                        print("🗣️ Dictation: recognition session ended (isFinal), restarting")
+                        self.restartSpeechRecognition()
+                    }
                 }
             }
 
             if let error {
+                // Don't restart on cancellation errors — they're caused by our own restarts
+                let nsError = error as NSError
+                if nsError.code == 216 || nsError.code == 209 {
+                    print("🗣️ Dictation: recognition cancelled (expected)")
+                    return
+                }
                 print("⚠️ Dictation: speech recognition error: \(error.localizedDescription)")
                 Task { @MainActor [weak self] in
                     self?.isListening = false
@@ -346,6 +362,13 @@ class DictationService: ObservableObject {
     private func restartSpeechRecognition() {
         // Don't restart during active command — would lose transcription context
         guard state == .idle else { return }
+
+        // Debounce: skip if restarted less than 1s ago (prevents cascade from cancellation errors)
+        if let lastRestart = lastRestartTime, Foundation.Date().timeIntervalSince(lastRestart) < 1.0 {
+            return
+        }
+        lastRestartTime = Foundation.Date()
+
         stopSpeechRecognition()
         startSpeechRecognition()
     }

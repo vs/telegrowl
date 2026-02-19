@@ -16,6 +16,8 @@ struct InputBarView: View {
     let dictationState: DictationState
     let liveTranscription: String
     let audioLevel: Float
+    let isListening: Bool
+    let lastHeard: String
     let onCancelDictation: () -> Void
 
     var body: some View {
@@ -36,41 +38,58 @@ struct InputBarView: View {
     // MARK: - Normal State
 
     private var normalBar: some View {
-        HStack(spacing: 8) {
-            Button(action: onAttachment) {
-                Image(systemName: "paperclip")
-                    .font(.system(size: 22))
-                    .foregroundColor(TelegramTheme.textSecondary)
+        VStack(spacing: 0) {
+            // Listening indicator — shows what the recognizer hears
+            if isListening && !lastHeard.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "ear")
+                        .font(.system(size: 10))
+                    Text(lastHeard)
+                        .font(.system(size: 11))
+                        .lineLimit(1)
+                }
+                .foregroundColor(TelegramTheme.textSecondary.opacity(0.6))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
             }
 
-            TextField("Message", text: $messageText, axis: .vertical)
-                .font(.system(size: 17))
-                .lineLimit(1...5)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color.white)
-                .clipShape(RoundedRectangle(cornerRadius: 18))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18)
-                        .stroke(TelegramTheme.inputBarBorder, lineWidth: 0.5)
-                )
-
-            if messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Button(action: onStartRecording) {
-                    Image(systemName: "mic.fill")
+            HStack(spacing: 8) {
+                Button(action: onAttachment) {
+                    Image(systemName: "paperclip")
                         .font(.system(size: 22))
                         .foregroundColor(TelegramTheme.textSecondary)
                 }
-            } else {
-                Button(action: onSendText) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 30))
-                        .foregroundColor(TelegramTheme.accent)
+
+                TextField("Message", text: $messageText, axis: .vertical)
+                    .font(.system(size: 17))
+                    .lineLimit(1...5)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(TelegramTheme.inputBarBorder, lineWidth: 0.5)
+                    )
+
+                if messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Button(action: onStartRecording) {
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(isListening ? TelegramTheme.accent : TelegramTheme.textSecondary)
+                    }
+                } else {
+                    Button(action: onSendText) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(TelegramTheme.accent)
+                    }
                 }
             }
+            .padding(.horizontal, 8)
+            .frame(minHeight: TelegramTheme.inputBarHeight)
         }
-        .padding(.horizontal, 8)
-        .frame(minHeight: TelegramTheme.inputBarHeight)
     }
 
     // MARK: - Manual Recording

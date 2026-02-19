@@ -32,6 +32,8 @@ struct ConversationDestination: View {
                 dictationState: dictationService.state,
                 liveTranscription: dictationService.liveTranscription,
                 audioLevel: dictationService.audioLevel,
+                isListening: dictationService.isListening,
+                lastHeard: dictationService.lastHeard,
                 onCancelDictation: { dictationService.cancel() }
             )
         }

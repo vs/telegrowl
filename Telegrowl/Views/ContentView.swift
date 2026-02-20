@@ -300,6 +300,8 @@ struct ContentView: View {
     // MARK: - Helpers
 
     private var isDisconnected: Bool {
+        // TDLib reports connection state only after startup; don't alarm on the welcome screen
+        guard telegramService.isAuthenticated else { return false }
         guard let state = telegramService.connectionState else { return true }
         if case .connectionStateReady = state { return false }
         return true

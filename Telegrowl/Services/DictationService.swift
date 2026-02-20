@@ -70,7 +70,7 @@ class DictationService: ObservableObject {
     private var lastNewWordTime: Foundation.Date?
     private var lastProcessedTranscriptLength: Int = 0
     private var silenceCheckTimer: Timer?
-    private let commandSilenceTimeout: TimeInterval = 3.0
+    private var commandSilenceTimeout: TimeInterval { Config.dictationSilenceTimeout }
     private let trailingSilenceTrim: TimeInterval = 0.5
 
     // Health check — detect stalled recognition

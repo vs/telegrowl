@@ -299,22 +299,24 @@ struct WaveformView: View {
     let isOutgoing: Bool
 
     var body: some View {
+        let levels = Waveform.unpack(waveform)
         GeometryReader { geometry in
             HStack(spacing: TelegramTheme.waveformBarSpacing) {
                 ForEach(0..<TelegramTheme.waveformBarCount, id: \.self) { index in
                     RoundedRectangle(cornerRadius: TelegramTheme.waveformBarWidth / 2)
                         .fill(isPlaying ? TelegramTheme.waveformActive : TelegramTheme.waveformInactive)
-                        .frame(width: TelegramTheme.waveformBarWidth, height: getBarHeight(for: index, maxHeight: geometry.size.height))
+                        .frame(width: TelegramTheme.waveformBarWidth, height: getBarHeight(for: index, levels: levels, maxHeight: geometry.size.height))
                 }
             }
             .frame(maxHeight: .infinity, alignment: .center)
         }
     }
 
-    private func getBarHeight(for index: Int, maxHeight: CGFloat) -> CGFloat {
-        if index < waveform.count {
-            let value = CGFloat(waveform[index]) / 255.0
-            return max(3, value * maxHeight)
+    private func getBarHeight(for index: Int, levels: [UInt8], maxHeight: CGFloat) -> CGFloat {
+        if !levels.isEmpty {
+            // Resample the 5-bit levels (0-31) to the number of bars
+            let level = levels[index * levels.count / TelegramTheme.waveformBarCount]
+            return max(3, CGFloat(level) / 31.0 * maxHeight)
         }
         // Fallback pattern
         let heights: [CGFloat] = [0.3, 0.5, 0.7, 0.4, 0.8, 0.6, 0.9, 0.5, 0.7, 0.4,

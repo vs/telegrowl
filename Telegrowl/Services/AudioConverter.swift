@@ -38,7 +38,7 @@ class AudioConverter {
         return (outputURL.standardizedFileURL, waveform)
     }
 
-    /// Generates Telegram-compatible waveform data (63 bytes, 5-bit values 0-31).
+    /// Generates Telegram-compatible waveform data: 63 5-bit values (0-31), bit-packed.
     /// Analyzes audio levels from the source file using AVFoundation.
     static func generateWaveform(from url: URL) -> Data {
         do {
@@ -58,7 +58,7 @@ class AudioConverter {
             }
 
             let samples = extractPeakLevels(channelData, frameCount: Int(frameCount), buckets: 63)
-            return Data(samples)
+            return Waveform.pack(samples)
         } catch {
             print("❌ Waveform generation failed: \(error)")
             return placeholderWaveform()
@@ -87,7 +87,7 @@ class AudioConverter {
     }
 
     private static func placeholderWaveform() -> Data {
-        Data((0..<63).map { _ in UInt8.random(in: 8...24) })
+        Waveform.pack((0..<63).map { _ in UInt8.random(in: 8...24) })
     }
 
     /// Cleanup temporary audio files older than 1 hour.
@@ -110,4 +110,34 @@ class AudioConverter {
             }
         }
     }
+}
+
+// MARK: - Waveform Packing
+
+/// Telegram stores voice note waveforms as a stream of 5-bit values (0-31),
+/// packed least-significant bit first.
+enum Waveform {
+    static func pack(_ values: [UInt8]) -> Data {
+        var bytes = [UInt8](repeating: 0, count: (values.count * 5 + 7) / 8)
+        for (index, value) in values.enumerated() {
+            let bitOffset = index * 5
+            let packed = UInt16(min(value, 31)) << (bitOffset % 8)
+            bytes[bitOffset / 8] |= UInt8(packed & 0xFF)
+            if bitOffset / 8 + 1 < bytes.count {
+                bytes[bitOffset / 8 + 1] |= UInt8(packed >> 8)
+            }
+        }
+        return Data(bytes)
+    }
+
+    static func unpack(_ data: Data) -> [UInt8] {
+        let bytes = [UInt8](data)
+        return (0..<(bytes.count * 8 / 5)).map { index in
+            let bitOffset = index * 5
+            let low = UInt16(bytes[bitOffset / 8])
+            let high = bitOffset / 8 + 1 < bytes.count ? UInt16(bytes[bitOffset / 8 + 1]) : 0
+            return UInt8(((high << 8 | low) >> (bitOffset % 8)) & 31)
+        }
+    }
+
 }

@@ -60,7 +60,9 @@ struct AvatarView: View {
     }
 
     private var avatarGradient: LinearGradient {
-        let index = abs(title.hashValue) % TelegramTheme.avatarColors.count
+        // String.hashValue is randomized per launch; use a stable hash so colors don't change
+        let hash = title.unicodeScalars.reduce(UInt(5381)) { $0 &* 33 &+ UInt($1.value) }
+        let index = Int(hash % UInt(TelegramTheme.avatarColors.count))
         let colors = TelegramTheme.avatarColors[index]
         return LinearGradient(
             colors: [colors.0, colors.1],

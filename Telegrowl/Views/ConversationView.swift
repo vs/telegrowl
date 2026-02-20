@@ -94,18 +94,34 @@ struct MessageBubble: View {
             textBubble(text.text.text)
 
         case .messageVoiceNote(let voiceContent):
-            VoiceMessageView(
-                voiceNote: voiceContent.voiceNote,
-                isPlaying: $isPlaying,
-                isOutgoing: message.isOutgoing
-            )
-            .overlay(alignment: .bottomTrailing) {
-                timestampRow
-                    .padding(.trailing, 4)
-                    .padding(.bottom, 4)
+            let caption = voiceContent.caption.text
+            if caption.isEmpty {
+                VoiceMessageView(
+                    voiceNote: voiceContent.voiceNote,
+                    isPlaying: $isPlaying,
+                    isOutgoing: message.isOutgoing
+                )
+                .overlay(alignment: .bottomTrailing) {
+                    timestampRow
+                        .padding(.trailing, 4)
+                        .padding(.bottom, 4)
+                }
+                .padding(.horizontal, TelegramTheme.bubblePaddingH)
+                .padding(.vertical, TelegramTheme.bubblePaddingV)
+            } else {
+                // Dictated voice messages carry their transcript as a caption
+                VStack(alignment: .leading, spacing: 0) {
+                    VoiceMessageView(
+                        voiceNote: voiceContent.voiceNote,
+                        isPlaying: $isPlaying,
+                        isOutgoing: message.isOutgoing
+                    )
+                    .padding(.horizontal, TelegramTheme.bubblePaddingH)
+                    .padding(.top, TelegramTheme.bubblePaddingV)
+
+                    textBubble(caption)
+                }
             }
-            .padding(.horizontal, TelegramTheme.bubblePaddingH)
-            .padding(.vertical, TelegramTheme.bubblePaddingV)
 
         case .messageAudio(let audioContent):
             AudioMessageView(

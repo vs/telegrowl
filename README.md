@@ -49,7 +49,7 @@ connection comes back.
 - **A regular Telegram UI for when you're parked**: chat list, search
   (including `@username`), message bubbles, and a text field.
 
-## Things that broke along the way
+## Implementation notes
 
 Getting speech-driven messaging to behave in a moving car took more than the
 happy path. Some of the problems, from the commit history:

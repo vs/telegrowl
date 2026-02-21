@@ -1,0 +1,45 @@
+name: Leak guard
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test guard rules
+        run: node --test 'scripts/guard/*.test.mjs'
+
+      - name: Scan new commits
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            range="$PR_BASE..$PR_HEAD"
+          elif [ -z "$PUSH_BEFORE" ] || [ "$PUSH_BEFORE" = "0000000000000000000000000000000000000000" ] \
+               || ! git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then
+            range=all
+          else
+            range="$PUSH_BEFORE..$PUSH_AFTER"
+          fi
+          echo "Scanning $range"
+          node scripts/guard/scan.mjs --range "$range"
+
+      - name: Scan tree
+        run: node scripts/guard/scan.mjs --tree

@@ -44,9 +44,15 @@ Config.swift
 *.secret
 *.pem
 *.p12
+*.p8
+*.key
+*.cer
 *.mobileprovision
 .env
 .env.*
+!.env.example
+secrets.*
+credentials.*
 
 # macOS
 .DS_Store
@@ -59,7 +65,8 @@ Config.swift
 *.swp
 *.swo
 .vscode/
-.claude/settings.local.json
+.claude/*
+!.claude/settings.json
 
 # Worktrees
 .worktrees/
@@ -78,3 +85,18 @@ td_api.json
 
 # Local signing (Team ID)
 *.local.xcconfig
+
+# Local app data and exports (never commit real account data)
+tdlib/
+tdlib_files/
+send_queue/
+td.binlog
+*.sqlite
+*.sqlite3
+*.db
+exports/
+*.har
+
+# Screenshot build output
+build/
+docs/screenshots/.*.raw.png

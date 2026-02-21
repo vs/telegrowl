@@ -1,0 +1,8 @@
+#!/bin/sh
+# Leak guard (pre-commit). Installed by scripts/setup-hooks.sh. Fails closed.
+root=$(git rev-parse --show-toplevel) || exit 1
+if ! command -v node >/dev/null 2>&1; then
+  echo "leak-guard: Node.js is required for the pre-commit hook (https://nodejs.org). Refusing." >&2
+  exit 1
+fi
+exec node "$root/scripts/guard/scan.mjs" --staged

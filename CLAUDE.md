@@ -6,27 +6,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Telegrowl is a hands-free Telegram voice client for iOS, designed for drivers. It enables voice-based communication with Telegram AI bots through trigger-word dictation, manual recording, and typed text input. The app uses SwiftUI with iOS 17+ and TDLibKit for Telegram integration.
 
-**Current Status:** TDLib integration complete, OGG/Opus encoding implemented, trigger-word dictation implemented, unified message send queue operational. Needs real-device testing.
+**Current Status:** TDLib integration complete, OGG/Opus encoding implemented, trigger-word dictation implemented, unified message send queue operational. Tested on a small number of real devices.
 
 ## Build & Run
 
 This is an Xcode-based Swift project using Swift Package Manager:
 
 ```bash
-# Resolve dependencies
-swift package resolve
+# Generate the Xcode project from project.yml (after adding/removing files too)
+xcodegen generate
 
-# Open in Xcode
-open Telegrowl.xcodeproj
+# Build from the command line
+xcodebuild -scheme Telegrowl -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
 ```
 
-- **Build:** Cmd+B in Xcode (iOS target only — `swift build` fails due to iOS-only APIs)
+- **Build:** Cmd+B in Xcode or `xcodebuild` (iOS target only — `swift build` fails due to iOS-only APIs)
 - **Run:** Cmd+R (requires iOS 17+ device/simulator)
-- **Demo Mode:** Available in DEBUG builds — tap "Demo Mode" button to test UI without TDLib
+- **Tests:** none yet — verify by building (no new warnings) and running
+- **Demo Mode:** DEBUG builds launched with `-demo` skip TDLib and show a "Demo Mode" button. `TELEGROWL_DEMO_FIXTURES=<json>` loads fictional chats (see `DemoFixtures.swift` for the other `TELEGROWL_DEMO_*` switches)
+- **Screenshots:** `scripts/screenshots/capture.sh` captures `docs/screenshots/*.png` from Demo Mode with fictional fixtures
 
 **Prerequisites:**
 1. Copy `Telegrowl/App/Config.swift.template` to `Config.swift` and fill in Telegram API credentials
-2. Dependencies resolve automatically via SPM (TDLibKit, SwiftOGG)
+2. For devices: copy `Configs/Signing.local.xcconfig.template` to `Signing.local.xcconfig` and set `DEVELOPMENT_TEAM`
+3. Dependencies resolve automatically via SPM (TDLibKit, SwiftOGG)
 
 ## Dependencies
 
@@ -99,6 +102,10 @@ Per-Session (@MainActor, NOT singleton):
 | `Telegrowl/Views/BubbleShape.swift` | Telegram-style message bubble shape with tails |
 | `Telegrowl/Views/TelegramTheme.swift` | Centralized theme constants (colors, sizes, fonts) |
 | `Telegrowl/App/Config.swift.template` | API credentials + UserDefaults-backed settings (copy to Config.swift) |
+| `Telegrowl/Services/DemoFixtures.swift` | DEBUG-only Demo Mode fixtures and launch switches |
+| `Configs/Signing.xcconfig` | Code signing; optionally includes gitignored `Signing.local.xcconfig` (Team ID) |
+| `project.yml` | XcodeGen spec — source of truth for `Telegrowl.xcodeproj` |
+| `scripts/screenshots/` | Screenshot capture script and fictional fixtures |
 
 ## Implementation Notes
 
@@ -106,7 +113,7 @@ Per-Session (@MainActor, NOT singleton):
 
 **Audio Pipeline:** Records M4A/AAC -> converts to OGG/Opus via SwiftOGG -> sends with waveform data via `sendVoiceMessage` (async throws, supports optional caption). Falls back to sending M4A if conversion fails.
 
-**Waveform Generation:** AVFoundation PCM analysis — reads audio into AVAudioPCMBuffer, extracts peak amplitudes into 63 buckets (5-bit values 0-31) for Telegram-compatible waveform display.
+**Waveform Generation:** AVFoundation PCM analysis — reads audio into AVAudioPCMBuffer, extracts peak amplitudes into 63 buckets (5-bit values 0-31), bit-packed LSB-first via `Waveform.pack` (Telegram's format). `WaveformView` decodes with `Waveform.unpack` and resamples to the bar count.
 
 **DictationService:**
 - State machine: `idle -> dictating -> recording -> sending`
@@ -116,7 +123,7 @@ Per-Session (@MainActor, NOT singleton):
 - `recognitionRequest` marked `nonisolated(unsafe)` — written on MainActor, `append()` called from audio thread (thread-safe)
 - Speech recognition uses 50s rolling restart to avoid Apple's ~60s session limit
 - Trigger words: "text message", "voice message", "text", "voice" (matched longest-first with word boundary awareness)
-- Silence detection based on speech recognizer output stalling — 3s of no new recognized words = end of command (not dB-based)
+- Silence detection based on speech recognizer output stalling — `Config.dictationSilenceTimeout` (default 3s) of no new recognized words = end of command (not dB-based)
 - Audio trimming: voice recordings trimmed to ~0.5s after last spoken word via `AudioTrimmer`, removes the 3s silence gap
 - Empty commands (trigger word with no content after) are silently discarded
 - Audio interruptions (calls, Siri) cancel active dictation/recording
@@ -155,7 +162,7 @@ Per-Session (@MainActor, NOT singleton):
 
 **Toast Status Feedback:** `ToastView` provides non-blocking banners with four styles (info/success/error/warning). `ToastData` supports a loading spinner and an optional Retry button. ContentView manages toast state and auto-dismiss (3s). Service errors are funneled via `.onChange(of: telegramService.error)`.
 
-**Connection Banner:** `ConnectionBanner` shows a prominent overlay at the top of the screen when disconnected (waiting for network, connecting, updating). Displays queued message count when items are pending.
+**Connection Banner:** `ConnectionBanner` shows a prominent overlay at the top of the screen when signed in and disconnected (waiting for network, connecting, updating). Hidden on the welcome/login screens, where TDLib has not reported a state yet. Displays queued message count when items are pending.
 
 **Persistent Settings:** User preferences (auto-play, haptics, silence detection, durations) are backed by `UserDefaults` via computed properties on `Config`. Defaults are registered in `TelegrowlApp.init()` via `Config.registerDefaults()`. API credentials and TDLib paths remain compile-time constants. Dictation-specific settings: `speechLocale`, `dictationSilenceTimeout`.
 
@@ -163,4 +170,8 @@ Per-Session (@MainActor, NOT singleton):
 
 ## Config.swift Template
 
-Copy `Telegrowl/App/Config.swift.template` to `Config.swift` (gitignored for security). Get credentials at https://my.telegram.org/apps.
+Copy `Telegrowl/App/Config.swift.template` to `Config.swift` (gitignored for security). Get credentials at https://my.telegram.org/apps. When the template changes, re-copy it and re-enter the credentials — a stale local `Config.swift` is a common cause of build errors.
+
+## Private Data
+
+Never commit `Config.swift`, API IDs/hashes, the Apple Team ID, absolute home-directory paths, or anything from a real Telegram account (names, usernames, phone numbers, messages, screenshots). Use Demo Mode fixtures for examples and screenshots.

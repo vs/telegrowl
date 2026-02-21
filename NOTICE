@@ -1,0 +1,18 @@
+Telegrowl
+Copyright 2026 Semyon Vadishev
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It depends on the following third-party software, fetched by Swift Package
+Manager at build time and distributed under their own licenses:
+
+- TDLib (https://github.com/tdlib/td), Boost Software License 1.0
+- TDLibKit and TDLibFramework (https://github.com/Swiftgram), MIT License
+- SwiftOGG (https://github.com/element-hq/swift-ogg), Apache License 2.0
+- ogg-swift and opus-swift (https://github.com/vector-im), MIT License,
+  which bundle libogg and libopus (https://xiph.org), BSD 3-Clause License
+
+The app icon was generated with ChatGPT (OpenAI).
+
+"Telegram" is a trademark of its owner. This project is not affiliated
+with or endorsed by Telegram.

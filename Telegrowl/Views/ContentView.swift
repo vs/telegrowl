@@ -43,6 +43,16 @@ struct ConversationDestination: View {
                let chat = telegramService.chats.first(where: { $0.id == chatId }) {
                 telegramService.selectChat(chat)
             }
+            #if DEBUG
+            if telegramService.isDemoMode {
+                // No microphone or speech recognition in Demo Mode
+                if let state = DemoFixtures.dictationState {
+                    dictationService.state = state
+                    dictationService.liveTranscription = DemoFixtures.transcript
+                }
+                return
+            }
+            #endif
             Task {
                 let result = await DictationService.requestPermissions()
                 switch result {
@@ -284,12 +294,14 @@ struct ContentView: View {
                 }
 
                 #if DEBUG
-                Button(action: { telegramService.simulateLogin() }) {
-                    Text("Demo Mode")
-                        .font(.caption)
-                        .foregroundColor(TelegramTheme.textSecondary)
+                if telegramService.isDemoMode {
+                    Button(action: { telegramService.simulateLogin() }) {
+                        Text("Demo Mode")
+                            .font(.caption)
+                            .foregroundColor(TelegramTheme.textSecondary)
+                    }
+                    .padding(.top, 20)
                 }
-                .padding(.top, 20)
                 #endif
 
                 Spacer()

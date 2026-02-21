@@ -57,6 +57,11 @@ struct ChatListView: View {
         }
         .onAppear {
             telegramService.loadChats()
+            #if DEBUG
+            if telegramService.isDemoMode && DemoFixtures.showSettings {
+                showingSettings = true
+            }
+            #endif
         }
     }
 }

@@ -140,4 +140,15 @@ enum Waveform {
         }
     }
 
+    #if DEBUG
+    /// Deterministic speech-like waveform for Demo Mode fixtures.
+    static func sample(seed: Int) -> [UInt8] {
+        (0..<63).map { index in
+            let phase = Double(index + seed * 7)
+            let envelope = 0.35 + 0.65 * abs(sin(phase / 5.0))
+            let detail = 0.6 + 0.4 * sin(phase * 2.1)
+            return UInt8(max(3, min(31, Int(31 * envelope * detail))))
+        }
+    }
+    #endif
 }

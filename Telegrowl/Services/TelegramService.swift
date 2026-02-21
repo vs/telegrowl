@@ -16,7 +16,10 @@ class TelegramService: ObservableObject {
     // MARK: - TDLib Client
     private var manager: TDLibClientManager?
     private(set) var api: TDLibClient?
-    private var isDemoMode = false
+    private(set) var isDemoMode = false
+    #if DEBUG
+    private var demoFixtures: DemoFixtures?
+    #endif
 
     // MARK: - Published State
     @Published var authorizationState: AuthorizationState?
@@ -247,8 +250,7 @@ class TelegramService: ObservableObject {
             // state transition that the UI can handle.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 // Transition directly to ready state since we can't create intermediate states
-                self.authorizationState = .authorizationStateReady
-                print("📱 Demo: Simulated phone verification -> ready")
+                self.simulateLogin()
             }
             return
         }
@@ -319,6 +321,17 @@ class TelegramService: ObservableObject {
     func loadChats(limit: Int = 100) {
         print("📱 Loading chats...")
 
+        #if DEBUG
+        if isDemoMode {
+            chats = demoFixtures?.chats ?? []
+            if selectedChat == nil, let chatId = DemoFixtures.openChatId,
+               let chat = chats.first(where: { $0.id == chatId }) {
+                selectChat(chat)
+            }
+            return
+        }
+        #endif
+
         Task {
             do {
                 let chatList = try await api?.getChats(chatList: .chatListMain, limit: limit)
@@ -366,6 +379,14 @@ class TelegramService: ObservableObject {
 
     func loadMessages(chatId: Int64, limit: Int = 50) {
         print("📱 Loading messages for chat \(chatId)")
+
+        #if DEBUG
+        if isDemoMode {
+            messages = demoFixtures?.messages[chatId] ?? []
+            hasMoreMessages = false
+            return
+        }
+        #endif
 
         Task {
             do {
@@ -674,13 +695,20 @@ class TelegramService: ObservableObject {
     private func setupDemoMode() {
         print("📱 TelegramService: Demo mode enabled")
         isDemoMode = true
+        demoFixtures = DemoFixtures.load()
         authorizationState = .authorizationStateWaitPhoneNumber
+
+        if DemoFixtures.autoLogin {
+            simulateLogin()
+        }
     }
 
     func simulateLogin() {
         guard isDemoMode else { return }
 
         authorizationState = .authorizationStateReady
+        connectionState = .connectionStateReady
+        currentUser = demoFixtures?.me
         print("📱 Demo: Simulated login")
     }
     #endif

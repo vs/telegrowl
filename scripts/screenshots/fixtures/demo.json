@@ -1,0 +1,52 @@
+{
+  "me": { "id": 900001, "first_name": "Alex", "last_name": "Demo", "username": "alex_demo" },
+  "chats": [
+    {
+      "id": 910001, "title": "Wayfinder Assistant", "pinned": true,
+      "messages": [
+        { "id": 1, "out": true,  "minutes_ago": 38, "text": "What's the quickest way to the airport right now?" },
+        { "id": 2, "out": false, "minutes_ago": 38, "text": "Take the ring road, about 24 minutes. The river bridge has a 10-minute delay." },
+        { "id": 3, "out": true,  "minutes_ago": 21, "voice": { "duration": 6, "caption": "Remind me to call the garage once I'm parked" } },
+        { "id": 4, "out": false, "minutes_ago": 21, "voice": { "duration": 9, "caption": "Done. I'll remind you when you stop driving." } },
+        { "id": 5, "out": true,  "minutes_ago": 4,  "voice": { "duration": 4, "caption": "Summarize my unread messages" } },
+        { "id": 6, "out": false, "minutes_ago": 3,  "text": "Three unread: Mia is running ten minutes late, the hike moved to 8:30, and the garage says your car is ready." }
+      ]
+    },
+    {
+      "id": 910002, "title": "Mia Novak", "unread": 2,
+      "messages": [
+        { "id": 11, "out": false, "minutes_ago": 12, "text": "Running ten minutes late, save me a seat!" }
+      ]
+    },
+    {
+      "id": 910003, "title": "Weekend Hike Crew", "unread": 5,
+      "messages": [
+        { "id": 21, "out": false, "minutes_ago": 55, "text": "Trailhead moved to 8:30, bring layers" }
+      ]
+    },
+    {
+      "id": 910004, "title": "Northside Garage",
+      "messages": [
+        { "id": 31, "out": false, "minutes_ago": 95, "voice": { "duration": 14 } }
+      ]
+    },
+    {
+      "id": 910005, "title": "Juniper Notes Bot",
+      "messages": [
+        { "id": 41, "out": true, "minutes_ago": 180, "text": "Note: buy a phone mount for the car" }
+      ]
+    },
+    {
+      "id": 910006, "title": "Tomas Berg",
+      "messages": [
+        { "id": 51, "out": true, "minutes_ago": 1500, "voice": { "duration": 22 } }
+      ]
+    },
+    {
+      "id": 910007, "title": "Book Club",
+      "messages": [
+        { "id": 61, "out": false, "minutes_ago": 1700, "text": "Next month: The Left Hand of Darkness" }
+      ]
+    }
+  ]
+}

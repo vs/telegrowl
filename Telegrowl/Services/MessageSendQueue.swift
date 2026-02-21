@@ -62,7 +62,7 @@ struct QueueItem: Codable, Identifiable {
 class MessageSendQueue: ObservableObject {
     static let shared = MessageSendQueue()
 
-    static let queueDirectory: URL = {
+    nonisolated static let queueDirectory: URL = {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         return docs.appendingPathComponent("send_queue", isDirectory: true)
     }()

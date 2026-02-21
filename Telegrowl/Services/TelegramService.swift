@@ -657,7 +657,7 @@ class TelegramService: ObservableObject {
 
         Task {
             do {
-                try await api?.downloadFile(
+                _ = try await api?.downloadFile(
                     fileId: fileId,
                     limit: 0,
                     offset: 0,

@@ -29,7 +29,7 @@ class AudioService: NSObject, ObservableObject {
     
     func setupAudioSession() {
         do {
-            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
+            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP, .allowBluetoothA2DP])
             try audioSession.setActive(true)
             print("🎙️ Audio session configured")
         } catch {
@@ -41,8 +41,6 @@ class AudioService: NSObject, ObservableObject {
     
     func startRecording() {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let audioFilename = documentsPath.appendingPathComponent("voice_\(Date().timeIntervalSince1970).ogg")
-        
         // Telegram uses Opus codec in OGG container, but for iOS we record as m4a and convert
         let tempFilename = documentsPath.appendingPathComponent("temp_\(Date().timeIntervalSince1970).m4a")
         

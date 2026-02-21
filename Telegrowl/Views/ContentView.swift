@@ -119,16 +119,15 @@ struct ConversationDestination: View {
         let targetChatId = chatId
 
         Task.detached {
-            var audioURL = m4aURL
-            var waveform: Data? = nil
-
+            let converted: (URL, Data)?
             do {
-                let (oggURL, wf) = try await AudioConverter.convertToOpus(inputURL: m4aURL)
-                audioURL = oggURL
-                waveform = wf
+                converted = try await AudioConverter.convertToOpus(inputURL: m4aURL)
             } catch {
                 print("❌ Conversion failed: \(error), sending M4A as fallback")
+                converted = nil
             }
+            let audioURL = converted?.0 ?? m4aURL
+            let waveform = converted?.1
 
             await MainActor.run {
                 MessageSendQueue.shared.enqueueVoice(

@@ -178,6 +178,9 @@ implementation notes.
 
 ## Development
 
+- **Leak guard:** run `./scripts/setup-hooks.sh` once after cloning. Git hooks
+  and CI scan every commit for secrets and personal data; see
+  [CONTRIBUTING.md](CONTRIBUTING.md#leak-guard).
 - **Project file:** `Telegrowl.xcodeproj` is generated from
   [`project.yml`](project.yml). Run `xcodegen generate` after adding or removing
   files and commit the regenerated project.

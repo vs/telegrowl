@@ -175,3 +175,5 @@ Copy `Telegrowl/App/Config.swift.template` to `Config.swift` (gitignored for sec
 ## Private Data
 
 Never commit `Config.swift`, API IDs/hashes, the Apple Team ID, absolute home-directory paths, or anything from a real Telegram account (names, usernames, phone numbers, messages, screenshots). Use Demo Mode fixtures for examples and screenshots.
+
+The leak guard (`scripts/guard/`, see CONTRIBUTING.md → Leak guard) enforces this in git hooks, CI, and Claude Code PreToolUse hooks. Never bypass it (`--no-verify`, `commit -n`, `core.hooksPath`, `LEAK_GUARD_OVERRIDE`); if it blocks something, fix the content or ask the user.

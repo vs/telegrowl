@@ -33,6 +33,7 @@
 		20AAD1996C4FC847F1D0881D /* MessageSendQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageSendQueue.swift; sourceTree = "<group>"; };
 		37493E4411FCCA57C9E8B462 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		41F3901E94199B49CA5F8DA9 /* BubbleShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleShape.swift; sourceTree = "<group>"; };
+		4E3E6F80F4C73184A7EF4DC4 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		53D54B8842268F1AEF17DF1F /* AudioConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConverter.swift; sourceTree = "<group>"; };
 		59AEA2D312F5AFA66B73A7C8 /* Telegrowl.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Telegrowl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D8B71203896E952930E85A1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -97,6 +98,7 @@
 		357913583C403F9CF37A4C58 = {
 			isa = PBXGroup;
 			children = (
+				6055CCEA29AB6DC161ED30C1 /* Configs */,
 				1CF0764AA5B34C016C447C27 /* Telegrowl */,
 				C07EC427EA9189B0ACF0D07D /* Products */,
 			);
@@ -112,6 +114,14 @@
 				901242977C0E7792517A34D2 /* TelegramService.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		6055CCEA29AB6DC161ED30C1 /* Configs */ = {
+			isa = PBXGroup;
+			children = (
+				4E3E6F80F4C73184A7EF4DC4 /* Signing.xcconfig */,
+			);
+			path = Configs;
 			sourceTree = "<group>";
 		};
 		C07EC427EA9189B0ACF0D07D /* Products */ = {
@@ -173,7 +183,7 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					F467B25DB8E99761F36B9633 = {
-						DevelopmentTeam = ABCDE12345;
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -298,11 +308,10 @@
 		};
 		A2DB8B1750E3E98A139012D3 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4E3E6F80F4C73184A7EF4DC4 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = ABCDE12345;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Telegrowl/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -381,11 +390,10 @@
 		};
 		FFB76804B1B217FC9B88491A /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4E3E6F80F4C73184A7EF4DC4 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = ABCDE12345;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Telegrowl/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -22,14 +22,15 @@ targets:
       - path: Telegrowl
         excludes:
           - "**/*.template"
+    configFiles:
+      Debug: Configs/Signing.xcconfig
+      Release: Configs/Signing.xcconfig
     settings:
       base:
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_FILE: Telegrowl/Resources/Info.plist
         GENERATE_INFOPLIST_FILE: false
-        DEVELOPMENT_TEAM: ABCDE12345
-        CODE_SIGN_STYLE: Automatic
     dependencies:
       - package: TDLibKit
       - package: SwiftOGG

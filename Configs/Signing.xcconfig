@@ -1,0 +1,10 @@
+// Code signing settings shared by all configurations.
+//
+// Your Apple Developer Team ID is personal, so it is not committed.
+// Copy Signing.local.xcconfig.template to Signing.local.xcconfig (gitignored)
+// and set DEVELOPMENT_TEAM there. Without it, Xcode asks you to pick a team.
+
+CODE_SIGN_STYLE = Automatic
+DEVELOPMENT_TEAM =
+
+#include? "Signing.local.xcconfig"

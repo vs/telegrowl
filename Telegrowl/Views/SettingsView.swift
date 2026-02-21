@@ -138,22 +138,13 @@ struct SettingsView: View {
             HStack {
                 Text("Version")
                 Spacer()
-                Text("1.0.0 MVP")
+                Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "–")
                     .foregroundColor(TelegramTheme.textSecondary)
             }
 
             Link(destination: URL(string: "https://github.com/vs/telegrowl")!) {
                 HStack {
                     Text("GitHub")
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .foregroundColor(TelegramTheme.textSecondary)
-                }
-            }
-
-            Link(destination: URL(string: "https://t.me/telegrowl")!) {
-                HStack {
-                    Text("Telegram Channel")
                     Spacer()
                     Image(systemName: "arrow.up.right")
                         .foregroundColor(TelegramTheme.textSecondary)

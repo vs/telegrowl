@@ -75,3 +75,6 @@ coverage/
 # TDLib files
 td_api.json
 *.tgz
+
+# Local signing (Team ID)
+*.local.xcconfig

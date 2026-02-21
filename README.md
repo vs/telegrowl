@@ -20,20 +20,22 @@
   <img src="docs/screenshots/conversation.png" width="300" alt="A conversation with an AI assistant: text and voice messages with transcribed captions">
 </p>
 
-## Why
+## How it works
 
-Telegram bots are a convenient front end for AI assistants, but the official
-apps assume you're looking at the screen. Telegrowl is a small, focused
-Telegram client where you **say a trigger word and talk**:
+1. Open a chat, typically with an AI assistant bot. Speech recognition runs
+   continuously while the chat is open.
+2. Start a command with a trigger word ("text message" and "voice message"
+   also work):
+   - **"text …"** transcribes your speech and sends it as a text message.
+   - **"voice …"** records a voice message and sends it with the transcript
+     as the caption.
+3. The command ends after 3 seconds without new recognized words. Speech
+   that doesn't start with a trigger word is ignored.
+4. Incoming voice messages play automatically. Replies that arrive during a
+   command are played after it finishes.
 
-- Say **"text …"** and your speech is transcribed and sent as a text message.
-- Say **"voice …"** and a voice message is recorded, trimmed, and sent with
-  its transcript as a caption.
-- Incoming voice replies **play automatically**.
-
-Recognition runs continuously while a conversation is open. Nothing is sent
-unless it starts with a trigger word, and messages are queued on disk, so a
-dead zone on the road doesn't lose them.
+Outgoing messages go through an on-disk queue and are retried when the
+connection comes back.
 
 > **Status:** personal project, not on the App Store. It works end to end
 > against real Telegram accounts, but it has only been tested on a handful of
@@ -41,29 +43,40 @@ dead zone on the road doesn't lose them.
 
 ## Features
 
-- **Trigger-word dictation** — `text` / `text message` and `voice` /
-  `voice message`, matched longest-first on word boundaries. A command ends
-  after 3 seconds without new recognized words (based on recognizer output,
-  not microphone level, so road noise doesn't keep it open).
-- **Voice messages done properly** — M4A recorded, trimmed to ~0.5 s after the
-  last spoken word, converted to OGG/Opus, and sent with a Telegram-format
-  waveform and the transcript as caption.
-- **Auto-play** of incoming voice messages; replies that arrive mid-command are
-  queued and played afterwards.
-- **Persistent send queue** — text and voice messages survive connectivity loss
-  and app restarts, with FIFO ordering and exponential-backoff retry
-  (2 s → 60 s).
-- **Driving-friendly status** — a full-width banner when the connection drops,
-  with the number of messages waiting to send.
-- **Telegram-style UI** — chat list with avatars and search (including
-  `@username` lookup), message bubbles for text, voice, audio and documents
-  (photos show as placeholders), and a text field for typing when you're
-  parked.
-- **Robust speech recognition** — on-device when available with server
-  fallback, rolling restarts before Apple's ~60 s session limit, health checks,
-  and recovery after calls or Siri interrupt audio.
-- **Bluetooth / CarPlay audio** — the input tap follows the hardware sample
-  rate, so car hands-free profiles (e.g. 24 kHz HFP) work.
+- **Real Telegram voice messages**: OGG/Opus with a proper waveform, trimmed
+  to half a second after your last word.
+- **Works with car audio**: Bluetooth hands-free and A2DP.
+- **A regular Telegram UI for when you're parked**: chat list, search
+  (including `@username`), message bubbles, and a text field.
+
+## Things that broke along the way
+
+Getting speech-driven messaging to behave in a moving car took more than the
+happy path. Some of the problems, from the commit history:
+
+- **Road noise is not silence.** Ending commands on microphone level (dB)
+  failed in the car, because level-based detection treats engine, wind, and
+  bump noise as speech. A command now ends when the *speech recognizer* has
+  produced no new words for 3 seconds, and the recording is trimmed to 0.5 s
+  after the last recognized word.
+- **Trigger words fired about 10% of the time.** Two bugs compounded.
+  Recognition silently stopped after each pause (the final result was never handled),
+  and cancelling a task to restart it triggered an error callback that killed
+  the replacement. The fix restarts on final results, ignores self-inflicted
+  cancellation errors, and debounces restarts. A rolling restart every 50 s
+  stays under Apple's ~60 s recognition limit, and a health check revives a
+  stalled recognizer.
+- **Bluetooth crashed the app.** Car hands-free profiles run the microphone at
+  24 kHz while the audio engine reported 48 kHz, so installing the input tap
+  failed. The tap now uses the hardware input format.
+- **TDLib never connected on real devices.** On iOS it doesn't detect network
+  changes itself, so the app relays `NWPathMonitor` updates with
+  `setNetworkType`.
+- **Voice messages looked wrong in other clients.** Telegram stores waveforms
+  as bit-packed 5-bit samples; sending one value per byte rendered as noise.
+- **Uploads failed for longer recordings.** TDLib uploads asynchronously after
+  `sendMessage` returns, so the OGG file must outlive the call. TDLib also
+  needs symlink-free file paths.
 
 ## Screenshots
 
